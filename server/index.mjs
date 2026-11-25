@@ -11,6 +11,9 @@ const HOST = process.env.HOST ?? '127.0.0.1';
 const PUBLIC = path.resolve(new URL('../public', import.meta.url).pathname);
 const COOKIE = 'lyd';
 const MAX_AGE = 180 * 86400;
+// Logging is off by default (privacy). Set LYD_LOG=1 to log requests, errors and client errors.
+const LOG = process.env.LYD_LOG === '1';
+const log = (...a) => { if (LOG) console.log(...a); };
 
 // ---------- helpers ----------
 const json = (res, status, obj) => {
@@ -27,10 +30,18 @@ const setCookie = (res, v, maxAge = MAX_AGE) =>
   res.setHeader('set-cookie', `${COOKIE}=${v}; Path=/; HttpOnly; ${process.env.INSECURE_COOKIE ? "" : "Secure; "}SameSite=Lax; Max-Age=${maxAge}`);
 const clientIp = (req) => (req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() || req.socket.remoteAddress;
 
-function clientFor(req) {
-  const s = store.open(cookieOf(req));
+// The session lives in the user's cookie. When GO rotates its cookies during a request,
+// the updated session is sealed and sent back in the same response.
+function clientFor(req, res) {
+  const s = store.unseal(cookieOf(req));
   if (!s) throw new HttpError(401, 'not logged in');
-  return new GoClient(s.state, s.creds, store.persist);
+  const before = JSON.stringify(s.jar);
+  const go = new GoClient({ jar: s.jar, deviceId: s.deviceId }, () => ({ card: s.card, pin: s.pin }), () => {
+    if (!res || res.headersSent) return;
+    const jar = go.state.jar;
+    if (JSON.stringify(jar) !== before) setCookie(res, store.seal({ ...s, jar }));
+  });
+  return go;
 }
 
 // ---------- shaping ----------
@@ -101,7 +112,7 @@ const routes = [
     try {
       const { jar, session } = await login(String(card).trim(), String(pin).trim());
       const deviceId = store.deviceIdFor(String(card).trim());
-      setCookie(res, store.create({ card: String(card).trim(), pin: String(pin).trim(), jar: jar.toJSON(), name: session.user?.name, deviceId }));
+      setCookie(res, store.seal({ card: String(card).trim(), pin: String(pin).trim(), jar: jar.toJSON(), name: session.user?.name ?? null, deviceId }));
       json(res, 200, { name: session.user?.name ?? null });
     } catch (e) {
       if (e instanceof LoginError) { fails.set(ip, [...(fails.get(ip) ?? []), Date.now()]); throw new HttpError(401, e.message); }
@@ -109,17 +120,16 @@ const routes = [
     }
   }],
   ['POST', /^\/api\/logout$/, async (req, res) => {
-    const c = cookieOf(req);
-    const s = store.open(c);
-    if (s) await new GoClient(s.state, () => null).raw('/auth/logout').catch(() => {});
-    store.destroy(c); setCookie(res, '', 0); json(res, 200, {});
+    const s = store.unseal(cookieOf(req));
+    if (s) await new GoClient({ jar: s.jar, deviceId: s.deviceId }, () => null).raw('/auth/logout').catch(() => {});
+    setCookie(res, '', 0); json(res, 200, {});
   }],
   ['GET', /^\/api\/me$/, async (req, res) => {
-    const s = store.open(cookieOf(req));
-    json(res, 200, s ? { name: s.state.name ?? null } : { name: null, loggedOut: true });
+    const s = store.unseal(cookieOf(req));
+    json(res, 200, s ? { name: s.name ?? null } : { name: null, loggedOut: true });
   }],
   ['GET', /^\/api\/search$/, async (req, res, _m, url) => {
-    const go = clientFor(req);
+    const go = clientFor(req, res);
     const q = url.searchParams.get('q')?.trim();
     if (!q) return json(res, 200, { hitcount: 0, works: [] });
     const TYPES = { audiobook: ['lydbog (online)'], ebook: ['e-bog'], book: ['bog'] };
@@ -127,7 +137,7 @@ const routes = [
     json(res, 200, { hitcount: search.hitcount, works: search.works.map(teaser) });
   }],
   ['GET', /^\/api\/work\/([^/]+)$/, async (req, res, m) => {
-    const go = clientFor(req);
+    const go = clientFor(req, res);
     const { work } = await go.work(decodeURIComponent(m[1]));
     if (!work) throw new HttpError(404, 'Ukendt titel');
     const d = workDetail(work);
@@ -144,7 +154,7 @@ const routes = [
     json(res, 200, d);
   }],
   ['GET', /^\/api\/loans$/, async (req, res) => {
-    const go = clientFor(req);
+    const go = clientFor(req, res);
     const [phys, resv, dig, fees] = await Promise.all([
       go.fbsLoans(), go.fbsReservations(), go.digitalLoans(), go.fbsFees().catch(() => []),
     ]);
@@ -171,28 +181,28 @@ const routes = [
     });
   }],
   ['POST', /^\/api\/renew$/, async (req, res) => {
-    const go = clientFor(req);
+    const go = clientFor(req, res);
     const { loanIds } = await readBody(req);
     json(res, 200, await go.renew(loanIds.map(Number)));
   }],
   ['POST', /^\/api\/reserve$/, async (req, res) => {
-    const go = clientFor(req);
+    const go = clientFor(req, res);
     const { faust } = await readBody(req);
     const r = await go.reserve(faust.map(String));
     json(res, r.success ? 200 : 409, { success: r.success, results: (r.reservationResults ?? []).map((x) => x.result) });
   }],
   ['DELETE', /^\/api\/reservations\/(\d+)$/, async (req, res, m) => {
-    await clientFor(req).cancelReservation(m[1]);
+    await clientFor(req, res).cancelReservation(m[1]);
     json(res, 200, {});
   }],
   ['POST', /^\/api\/borrow$/, async (req, res) => {
-    const go = clientFor(req);
+    const go = clientFor(req, res);
     const { isbn } = await readBody(req);
     const r = await go.borrow(String(isbn));
     json(res, 200, { status: r.status, id: r.loan?.id ?? null });
   }],
   ['GET', /^\/api\/cover$/, async (req, res, _m, url) => {
-    if (!store.open(cookieOf(req))) throw new HttpError(401, 'not logged in');
+    if (!store.unseal(cookieOf(req))) throw new HttpError(401, 'not logged in');
     let u; try { u = new URL(url.searchParams.get('u')); } catch { throw new HttpError(400, 'bad url'); }
     if (u.protocol !== 'https:' || !COVER_HOSTS.has(u.hostname)) throw new HttpError(400, 'host not allowed');
     const r = await fetch(u, { redirect: 'error' });
@@ -203,11 +213,11 @@ const routes = [
   }],
   ['POST', /^\/api\/log$/, async (req, res) => {
     const b = await readBody(req);
-    console.log('client', clientIp(req), String(b.kind).slice(0, 20), String(b.detail).slice(0, 500), '|', String(b.ua).slice(0, 160));
+    log('client', String(b.kind).slice(0, 20), String(b.detail).slice(0, 500), '|', String(b.ua).slice(0, 160));
     json(res, 200, {});
   }],
   ['POST', /^\/api\/audio\/([\w-]+)\/ticket$/, async (req, res, m) => {
-    clientFor(req); // auth check
+    clientFor(req, res); // auth check
     const t = crypto.randomBytes(18).toString('base64url');
     tickets.set(t, { cookie: cookieOf(req), checkoutId: m[1], exp: Date.now() + 30 * 60_000 });
     json(res, 200, { url: `/api/audio/${t}.m3u8` });
@@ -215,9 +225,8 @@ const routes = [
   ['GET', /^\/api\/audio\/([\w-]+)\.m3u8$/, async (req, res, m) => {
     const t = tickets.get(m[1]);
     if (!t || t.exp < Date.now()) throw new HttpError(404, 'ticket expired');
-    const s = store.open(t.cookie);
-    if (!s) throw new HttpError(401, 'not logged in');
-    const playlist = t.playlist ?? (t.playlist = await new GoClient(s.state, s.creds, store.persist).audiobookPlaylist(t.checkoutId));
+    if (!store.unseal(t.cookie)) throw new HttpError(401, 'not logged in');
+    const playlist = t.playlist ?? (t.playlist = await clientFor({ headers: { cookie: `${COOKIE}=${t.cookie}` } }, null).audiobookPlaylist(t.checkoutId));
     res.writeHead(200, { 'content-type': 'application/vnd.apple.mpegurl', 'cache-control': 'no-store' });
     res.end(playlist);
   }],
@@ -240,8 +249,8 @@ function serveStatic(res, pathname) {
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
   const t0 = Date.now();
-  if (url.pathname.startsWith('/api/') && url.pathname !== '/api/log' && url.pathname !== '/api/cover') {
-    res.on('finish', () => console.log(req.method, url.pathname.replace(/^\/api\/audio\/[\w-]+\.m3u8$/, '/api/audio/<ticket>.m3u8'), res.statusCode, `${Date.now() - t0}ms`, String(req.headers['user-agent'] ?? '').slice(0, 60)));
+  if (LOG && url.pathname.startsWith('/api/') && url.pathname !== '/api/log' && url.pathname !== '/api/cover') {
+    res.on('finish', () => log(req.method, url.pathname.replace(/^\/api\/audio\/[\w-]+\.m3u8$/, '/api/audio/<ticket>.m3u8'), res.statusCode, `${Date.now() - t0}ms`, String(req.headers['user-agent'] ?? '').slice(0, 60)));
   }
   try {
     if (url.pathname.startsWith('/api/')) {
@@ -255,8 +264,8 @@ http.createServer(async (req, res) => {
     serveStatic(res, url.pathname);
   } catch (e) {
     const status = e.status ?? 500;
-    if (status >= 400) console.error(req.method, url.pathname.replace(/audio\/[\w-]+\.m3u8/, 'audio/<ticket>.m3u8'), status, e.message, typeof e.body === 'string' ? e.body.slice(0, 300) : JSON.stringify(e.body ?? '').slice(0, 300));
+    if (LOG && status >= 400) console.error(req.method, url.pathname.replace(/audio\/[\w-]+\.m3u8/, 'audio/<ticket>.m3u8'), status, e.message, typeof e.body === 'string' ? e.body.slice(0, 300) : JSON.stringify(e.body ?? '').slice(0, 300));
     if (!res.headersSent) json(res, status, { error: status >= 500 && !e.status ? 'Serverfejl' : e.message, detail: e.body ?? undefined });
     else res.end();
   }
-}).listen(PORT, HOST, () => console.log(`lyd on http://${HOST}:${PORT}`));
+}).listen(PORT, HOST, () => console.log(`lyd on http://${HOST}:${PORT} (log ${LOG ? 'on' : 'off'})`));

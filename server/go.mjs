@@ -23,8 +23,13 @@ export class HttpError extends Error {
   constructor(status, msg, body) { super(msg); this.status = status; this.body = body; }
 }
 
+// In-memory only (gone on restart): Firebase ID tokens and which devices are registered,
+// keyed by device id. Nothing here is written to disk.
+const fbTokens = new Map();
+const devicesAdded = new Set();
+
 export class GoClient {
-  // state: { jar, fb?: {idToken, exp}, deviceId, deviceAdded }
+  // state: { jar, deviceId }
   // getCreds: () => {card, pin} | null  (for silent re-login)
   constructor(state, getCreds, onChange) {
     this.state = state; this.jar = Jar.from(state.jar ?? []);
@@ -37,7 +42,7 @@ export class GoClient {
     const creds = this.getCreds();
     if (!creds) throw new HttpError(401, 'session expired');
     const { jar } = await login(creds.card, creds.pin);
-    this.jar = jar; this.state.fb = null; this.save();
+    this.jar = jar; fbTokens.delete(this.state.deviceId); this.save();
   }
 
   async raw(path, opts = {}, retry = true) {
@@ -105,7 +110,7 @@ export class GoClient {
   borrow(isbn) { return this.ap('/biblio/v1/loans', { method: 'POST', body: { material_id: isbn } }); }
 
   async firebaseToken() {
-    const fb = this.state.fb;
+    const fb = fbTokens.get(this.state.deviceId);
     if (fb && fb.exp > Date.now() + 60_000) return fb.idToken;
     const { token } = await this.ap('/biblio/v1/auth/create-sign-in-token', { method: 'POST', body: {} });
     const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${await getFirebaseKey()}`, {
@@ -115,8 +120,7 @@ export class GoClient {
     });
     const j = await r.json();
     if (!j.idToken) throw new HttpError(502, 'firebase sign-in failed', j);
-    this.state.fb = { idToken: j.idToken, exp: Date.now() + Number(j.expiresIn) * 1000 };
-    this.save();
+    fbTokens.set(this.state.deviceId, { idToken: j.idToken, exp: Date.now() + Number(j.expiresIn) * 1000 });
     return j.idToken;
   }
 
@@ -137,14 +141,14 @@ export class GoClient {
   // more of WeDoBooks' 6-device limit.
   async ensureDevice() {
     if (!this.state.deviceId) throw new HttpError(401, 'log ind igen');
-    if (!this.state.deviceAdded) {
+    if (!devicesAdded.has(this.state.deviceId)) {
       try {
         await this.fn('Devices-add', { data: { device: { id: this.state.deviceId, name: 'Bibliotek (lyd)', type: 'web' } } });
       } catch (e) {
         if (e.status === 429) throw new HttpError(409, 'Du har brugt alle 6 enheder til lydbøger og e-bøger. Fjern en enhed i GO-appen eller på go.bibliotek.kk.dk under din profil, og prøv igen.');
         if (e.status !== 409) throw e; // 409 = already-exists: fine
       }
-      this.state.deviceAdded = true; this.save();
+      devicesAdded.add(this.state.deviceId);
     }
     await this.fn('Devices-set_active', { data: { deviceId: this.state.deviceId } });
   }

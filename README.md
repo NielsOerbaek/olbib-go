@@ -1,6 +1,6 @@
 # Olbib Go
 
-En lille, uofficiel webapp til Københavns Bibliotekers børneunivers [GO](https://go.bibliotek.kk.dk), lavet til ældre iPhones.
+En lille, uofficiel webapp til Københavns Bibliotekers børneunivers [GO](https://go.bibliotek.kk.dk), lavet til ældre telefoner.
 
 > Olbib Go er et privat hobbyprojekt. Det er ikke lavet af, godkendt af eller tilknyttet Københavns Biblioteker, Det Digitale Folkebibliotek, DBC eller WeDoBooks.
 
@@ -29,6 +29,32 @@ Olbib Go er den vej ind. Det er en simpel webapp, der kan lægges på hjemmeskæ
 
 E-bøger kan lånes, men ikke læses i appen. Se [E-bøger](#e-bøger) nedenfor.
 
+## Telefoner og browsere
+
+- **Ældre iPhones** (testet med iOS 16): åbn appen i Safari og vælg Del → Føj til hjemmeskærm. Så kører den som en app i fuld skærm.
+- **Ældre Android-telefoner:** åbn appen i Chrome og vælg Føj til startskærm i menuen. Den virker på samme måde som PWA.
+- **Andre browsere:** appen virker også i almindelige browsere på computer og telefon, fx Firefox, Chrome og Safari.
+
+## Hvad gemmes hvor
+
+Kort sagt: **serveren gemmer ingenting om brugerne.** Alt om et login ligger krypteret i brugerens egen cookie, og serverens log er slået fra.
+
+| Hvor | Hvad | Hvor længe |
+|---|---|---|
+| **Brugerens cookie** (`lyd`) | Ét krypteret felt med GO's session-cookies, lånernummer og pinkode (så serveren kan logge ind igen, når GO's session udløber efter cirka et døgn), navnet fra GO og enheds-id'et til lydbøger. | Indtil man logger ud, højst 180 dage |
+| **Telefonens browser** (localStorage) | Hvor langt man er nået i hver lydbog, den seneste lydbog, afspilningshastighed og valgt søgefilter. | Indtil browserdata slettes |
+| **Serverens disk** | Kun en tilfældig hemmelighed (`secret`), som bruges til at kryptere cookies og beregne enheds-id'er. Ingen brugerliste, ingen sessioner. | Fast |
+| **Serverens hukommelse** | Kortlivede billetter til lydbogsafspilning (30 min), midlertidige Firebase-tokens (1 time), hvilke enheder der er registreret, og tidspunkter for fejlede logins pr. IP. | Forsvinder ved genstart |
+| **Serverens log** | Intet. Logning er slået fra som standard. | – |
+
+Serveren ser naturligvis de data, der passerer igennem den, mens en anmodning står på, fordi den er mellemled til GO. Den gemmer dem bare ikke.
+
+Cookien er krypteret og autentificeret med AES-256-GCM. Den er `HttpOnly`, `Secure` og `SameSite=Lax`, så JavaScript ikke kan læse den, og den ikke sendes med, når andre sider laver anmodninger i baggrunden. En ændret eller for gammel cookie bliver afvist. Hvis serverens hemmelighed udskiftes, bliver alle logget ud.
+
+### Logning
+
+Logning er slået fra. Til fejlsøgning kan den slås til med `LYD_LOG=1`. Så logger serveren hver API-anmodning (metode, sti, status, tid og browser), fejl, og fejl som appen selv indberetter, fx hvis en lydbog ikke kan afspilles. Stien kan indeholde id'et på en titel eller et lån. Lånernumre, pinkoder, søgeord og billet-URL'er logges aldrig.
+
 ## Teknisk løsning
 
 ```
@@ -55,7 +81,7 @@ Login går gennem Adgangsplatformen ([login.bib.dk](https://login.bib.dk), DBC's
 1. Serveren åbner GO's login-link, som via `bibliotek.kk.dk` sender videre til `login.bib.dk/oauth/authorize`.
 2. Serveren finder login-formularen og sender lånernummer og pinkode (identitetsudbyderen "borchk").
 3. Redirect-kæden fortsætter tilbage via `bibliotek.kk.dk` til `go.bibliotek.kk.dk/auth/callback/...`, som sætter GO's session-cookie.
-4. Serveren gemmer cookie-krukken. GO's `/ap-service` accepterer session-cookien alene.
+4. GO's cookies krypteres ind i brugerens egen cookie (se [Hvad gemmes hvor](#hvad-gemmes-hvor)). GO's `/ap-service` accepterer GO's session-cookie alene. Når GO fornyer sine cookies, sender serveren en opdateret cookie med i svaret.
 
 Fejlkoder fra hejmdal (`bonfd`, `bonui`, `tmul` …) oversættes til danske beskeder. Adgangsplatformen tæller forkerte forsøg både pr. bruger og pr. IP-adresse. Alle brugere af én server deler IP-adresse, så serveren tillader højst fem fejlede logins pr. kvarter pr. klient.
 
@@ -98,20 +124,14 @@ Olbib Go genskaber **ikke** den dekryptering. At omgå kopibeskyttelse er ikke t
 
 Forsiderne ligger på `images.pubhub.dk` og `fbiinfo-present.dbc.dk`. Deres certifikater kæder op til nyere rodcertifikater (Sectigo R46 og ISRG Root YR), som ældre Apple-enheder ikke kender, så Safari afviser billederne. Serveren henter derfor forsiderne og sender dem videre (`/api/cover`), kun for loggede brugere og kun fra de to værter.
 
-### Sikkerhed og data
-
-- Lånernummer og pinkode gemmes, så serveren kan logge ind igen, når GO's session udløber (efter cirka et døgn). De krypteres med AES-256-GCM med en nøgle, der **kun** ligger i brugerens cookie. Sessionsfilen på serveren afslører dem ikke alene.
-- Cookien er `HttpOnly`, `Secure` og `SameSite=Lax`. Sessioner, der ikke er brugt i 120 dage, slettes, når serveren starter.
-- Serveren logger anmodninger (metode, sti, status, tid) og fejl fra appen, men aldrig lånernumre, pinkoder eller billet-URL'er.
-
 ## Kode
 
 ```
 server/
-  index.mjs        HTTP-server: API-ruter, statiske filer, cover-proxy, logging
+  index.mjs        HTTP-server: API-ruter, statiske filer, cover-proxy, valgfri logning
   go.mjs           Klient til GO's API'er og WeDoBooks/Firebase
   go-login.mjs     Login-flowet og en simpel cookie-krukke
-  store.mjs        Sessioner på disk med krypterede loginoplysninger
+  store.mjs        Krypterer og læser sessionen i brugerens cookie
   queries/         FBI GraphQL-forespørgsler
 public/            PWA'en: index.html, app.js, style.css, sw.js, manifest, ikoner, skrift
 ops/               systemd-unit og deploy-script
@@ -130,7 +150,8 @@ INSECURE_COOKIE=1 LYD_DATA=data node server/index.mjs
 | Miljøvariabel | Standard | Betydning |
 |---|---|---|
 | `PORT` / `HOST` | `3800` / `127.0.0.1` | Hvor serveren lytter |
-| `LYD_DATA` | `./data` | Mappe til `sessions.json` og serverens hemmelighed |
+| `LYD_DATA` | `./data` | Mappe til serverens hemmelighed (`secret`) |
+| `LYD_LOG` | ikke sat | Sæt til `1` for at slå logning til |
 | `INSECURE_COOKIE` | ikke sat | Sæt til `1` for at køre over almindelig HTTP lokalt |
 
 I drift kører serveren som en systemd-brugerservice (`ops/bibliotek.service`) bag en reverse proxy, der står for HTTPS.
