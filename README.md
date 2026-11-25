@@ -4,6 +4,15 @@ En lille, uofficiel webapp til Københavns Bibliotekers børneunivers [GO](https
 
 > Olbib Go er et privat hobbyprojekt. Det er ikke lavet af, godkendt af eller tilknyttet Københavns Biblioteker, Det Digitale Folkebibliotek, DBC eller WeDoBooks.
 
+<p>
+  <img src="docs/screenshots/2-mine-laan.png" width="190" alt="Mine lån med lydbøger, e-bøger og hjemlånte bøger">
+  <img src="docs/screenshots/3-soeg.png" width="190" alt="Søgning med filter for lydbøger">
+  <img src="docs/screenshots/4-titel.png" width="190" alt="En titel med knapper til at låne lydbogen og reservere bogen">
+  <img src="docs/screenshots/5-afspiller.png" width="190" alt="Lydbogsafspilleren med søvntimer">
+</p>
+
+*Mine lån viser eksempeldata. Skærmbillederne er taget med `tools/screenshots.mjs`.*
+
 ## Hvorfor
 
 GO virker ikke på vores gamle iPhone, som kører iOS 16 og ikke kan opdateres. Telefonen er ellers fin til at lytte til lydbøger, og et barn kan sagtens bruge den. Det eneste, der mangler, er en vej ind til bibliotekets bøger.
@@ -133,6 +142,7 @@ I drift kører serveren som en systemd-brugerservice (`ops/bibliotek.service`) b
 - `record.mjs` åbner en Chrome med egen profil og gemmer al trafik i `capture/traffic.jsonl`, mens man selv bruger GO.
 - `show.mjs` viser udvalgte anmodninger fra optagelsen.
 - `smoke.mjs`, `ui-check.mjs`, `player-fit.mjs` og `cover-check.mjs` er røgtest af API og brugerflade mod en kørende server.
+- `screenshots.mjs` tager skærmbillederne til denne README, med eksempeldata i stedet for rigtige lån.
 - `devices.mjs` viser (og med `--clean` fjerner) de WeDoBooks-enheder, Olbib Go har registreret.
 
 **Pas på:** optagelsen i `capture/` indeholder dit lånernummer og din pinkode i klar tekst. Mappen er i `.gitignore` og må aldrig deles. Testscriptene læser loginoplysningerne derfra.
