@@ -1,8 +1,8 @@
 # Olbib Go
 
-En lille, uofficiel webapp til Københavns Bibliotekers børneunivers [GO](https://go.bibliotek.kk.dk), lavet til ældre telefoner.
+En lille, uofficiel webapp til folkebibliotekernes børneunivers [Biblo GO!](https://biblogo.dk) (tidligere eReolen GO), lavet til ældre telefoner. Indtil videre virker den med Københavns Bibliotekers GO ([go.bibliotek.kk.dk](https://go.bibliotek.kk.dk)).
 
-> Olbib Go er et privat hobbyprojekt. Det er ikke lavet af, godkendt af eller tilknyttet Københavns Biblioteker, Det Digitale Folkebibliotek, DBC eller WeDoBooks.
+> Olbib Go er et privat hobbyprojekt. Det er ikke lavet af, godkendt af eller tilknyttet Biblo GO!, Det Digitale Folkebibliotek, Københavns Biblioteker eller andre biblioteker, DBC eller WeDoBooks.
 
 <p>
   <img src="docs/screenshots/2-mine-laan.png" width="190" alt="Mine lån med lydbøger, e-bøger og hjemlånte bøger">
@@ -15,7 +15,7 @@ En lille, uofficiel webapp til Københavns Bibliotekers børneunivers [GO](https
 
 ## Hvorfor
 
-GO virker ikke på vores gamle iPhone, som kører iOS 16 og ikke kan opdateres. Telefonen er ellers fin til at lytte til lydbøger, og et barn kan sagtens bruge den. Det eneste, der mangler, er en vej ind til bibliotekets bøger.
+Biblo GO! er en del af Det Digitale Folkebibliotek, og omkring 100 biblioteker i Danmark, på Færøerne, i Grønland og i Sydslesvig har hver deres GO-side. GO virker ikke på vores gamle iPhone, som kører iOS 16 og ikke kan opdateres. Telefonen er ellers fin til at lytte til lydbøger, og et barn kan sagtens bruge den. Det eneste, der mangler, er en vej ind til bibliotekets bøger.
 
 Olbib Go er den vej ind. Det er en simpel webapp, der kan lægges på hjemmeskærmen i Safari (en såkaldt PWA). Den taler med de samme tjenester som GO, med ens eget lånerkort og pinkode, og viser det hele i en brugerflade, der virker i en gammel Safari.
 
