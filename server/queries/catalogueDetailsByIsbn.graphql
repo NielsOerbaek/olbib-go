@@ -1,0 +1,23 @@
+
+    query catalogueDetailsByIsbn($cql: String!, $limit: PaginationLimitScalar!) {
+  complexSearch(cql: $cql) {
+    errorMessage
+    works(offset: 0, limit: $limit) {
+      titles {
+        full
+      }
+      creators {
+        display
+      }
+      manifestations {
+        all {
+          identifiers {
+            type
+            value
+          }
+        }
+      }
+    }
+  }
+}
+    

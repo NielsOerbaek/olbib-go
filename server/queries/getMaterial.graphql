@@ -1,0 +1,189 @@
+
+    query getMaterial($wid: String!) {
+  work(id: $wid) {
+    ...WorkFullWorkPage
+  }
+}
+    fragment ManifestationCover on Manifestation {
+  pid
+  cover {
+    thumbnail
+    xSmall {
+      url
+      width
+      height
+    }
+    small {
+      url
+      width
+      height
+    }
+    medium {
+      url
+      width
+      height
+    }
+    large {
+      url
+      width
+      height
+    }
+  }
+}
+fragment ManifestationIdentifiers on Manifestation {
+  pid
+  identifiers {
+    type
+    value
+  }
+}
+fragment ManifestationAccess on Manifestation {
+  accessTypes {
+    code
+    display
+  }
+  access {
+    __typename
+    ... on AccessUrl {
+      origin
+      url
+      loginRequired
+    }
+    ... on RetrieverService {
+      id
+    }
+    ... on InterLibraryLoan {
+      loanIsPossible
+    }
+    ... on Ereol {
+      origin
+      url
+      canAlwaysBeLoaned
+    }
+    ... on DigitalArticleService {
+      issn
+    }
+  }
+}
+fragment ManifestationTitles on Manifestation {
+  titles {
+    identifyingAddition
+    full
+  }
+}
+fragment ManifestationLanguages on Manifestation {
+  languages {
+    main {
+      display
+      iso639Set1
+    }
+  }
+}
+fragment ManifestationDescription on Manifestation {
+  audience {
+    ages {
+      display
+    }
+  }
+  series {
+    numberInSeries
+    title
+  }
+  subjects {
+    all {
+      display
+    }
+  }
+}
+fragment ManifestationDetails on Manifestation {
+  physicalDescription {
+    summaryFull
+  }
+  dateFirstEdition {
+    display
+  }
+  edition {
+    publicationYear {
+      display
+      year
+    }
+    edition
+    summary
+  }
+  genreAndForm
+  publisher
+  contributors {
+    display
+  }
+  contributorsFromDescription
+}
+fragment ManifestationMaterialTypes on Manifestation {
+  materialTypes {
+    materialTypeGeneral {
+      code
+      display
+    }
+    materialTypeSpecific {
+      code
+      display
+    }
+  }
+}
+fragment ManifestationWorkPage on Manifestation {
+  ...ManifestationMaterialTypes
+  ...ManifestationIdentifiers
+  ...ManifestationCover
+  ...ManifestationAccess
+  ...ManifestationTitles
+  ...ManifestationLanguages
+  ...ManifestationDescription
+  ...ManifestationDetails
+}
+fragment WorkMaterialTypes on Work {
+  materialTypes {
+    materialTypeGeneral {
+      display
+      code
+    }
+    materialTypeSpecific {
+      display
+      code
+    }
+  }
+}
+fragment WorkTitles on Work {
+  titles {
+    full
+    original
+  }
+}
+fragment WorkCreators on Work {
+  creators {
+    display
+    __typename
+  }
+}
+fragment WorkPublicationYear on Work {
+  workYear {
+    display
+  }
+}
+fragment WorkDescription on Work {
+  abstract
+}
+fragment WorkFullWorkPage on Work {
+  workId
+  ...WorkTitles
+  ...WorkCreators
+  ...WorkMaterialTypes
+  ...WorkPublicationYear
+  ...WorkDescription
+  manifestations {
+    all {
+      ...ManifestationWorkPage
+    }
+    bestRepresentation {
+      ...ManifestationWorkPage
+    }
+  }
+}

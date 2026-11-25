@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#f3ead8"/>
+  <!-- headphones band -->
+  <path d="M250 560 C 250 330 380 220 512 220 C 644 220 774 330 774 560" fill="none" stroke="#1f5d4f" stroke-width="70" stroke-linecap="round"/>
+  <!-- book as the "face" -->
+  <rect x="330" y="400" width="364" height="440" rx="34" fill="#e2603f"/>
+  <rect x="330" y="400" width="60" height="440" rx="20" fill="#c24c2f"/>
+  <rect x="440" y="480" width="200" height="30" rx="15" fill="#f3ead8"/>
+  <rect x="440" y="540" width="150" height="30" rx="15" fill="#f3ead8" opacity=".75"/>
+  <!-- ear cups -->
+  <rect x="200" y="520" width="140" height="250" rx="60" fill="#1f5d4f"/>
+  <rect x="684" y="520" width="140" height="250" rx="60" fill="#1f5d4f"/>
+</svg>

@@ -1,0 +1,16 @@
+
+    query searchFacets($q: SearchQueryInput!, $facets: [FacetFieldEnum!]!, $facetLimit: Int!, $filters: SearchFiltersInput) {
+  search(q: $q, filters: $filters) {
+    facets(facets: $facets) {
+      ...SearchFacet
+    }
+  }
+}
+    fragment SearchFacet on FacetResult {
+  name
+  values(limit: $facetLimit) {
+    key
+    term
+    score
+  }
+}
