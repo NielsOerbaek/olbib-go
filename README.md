@@ -100,9 +100,9 @@ Listen over kommuner og deres GO-adresser kommer fra kommunevælgeren på [biblo
 - bibliotekets navn og login-link (fx `https://www.aakb.dk/login?current-path=/go-login`),
 - om lydbøger og e-bøger er slået til (det er de fx ikke i Grønland),
 - Firebase-opsætning til lydbøger,
-- filialer, der ikke skal med i tilgængelighed.
+- filialer, biblioteket selv holder udenfor (`blacklistedAvailabilityBranches`).
 
-Serveren læser opsætningen fra kommunens GO-side og holder den i hukommelsen i nogle timer. Søgninger begrænses til bibliotekets egne filialer, som hentes fra FBS (`/fbs/external/v1/agencyid/branches`).
+Serveren læser opsætningen fra kommunens GO-side og holder den i hukommelsen i nogle timer. Søgninger begrænses til bibliotekets egne filialer: listen hentes fra FBS (`/fbs/external/v1/agencyid/branches`), minus dem biblioteket holder udenfor.
 
 ### Login
 
@@ -113,7 +113,7 @@ Login går gennem Adgangsplatformen ([login.bib.dk](https://login.bib.dk), DBC's
 3. Redirect-kæden fortsætter tilbage via bibliotekets hjemmeside til GO-sidens `/auth/callback/...`, som sætter GO's session-cookie.
 4. GO's cookies krypteres ind i brugerens egen cookie (se [Hvad gemmes hvor](#hvad-gemmes-hvor)). GO's `/ap-service` accepterer GO's session-cookie alene. Når GO fornyer sine cookies, sender serveren en opdateret cookie med i svaret.
 
-Fejlkoder fra hejmdal (`bonfd`, `bonui`, `tmul` …) oversættes til danske beskeder. Adgangsplatformen tæller forkerte forsøg både pr. bruger og pr. IP-adresse. Alle brugere af én server deler IP-adresse, så serveren tillader højst fem fejlede logins pr. kvarter pr. klient.
+Fejlkoder fra hejmdal (`bonfd`, `bonui`, `tmul` …) oversættes til danske beskeder. Adgangsplatformen tæller forkerte forsøg både pr. bruger og pr. IP-adresse. Alle brugere af én server deler IP-adresse, så serveren tillader højst fem fejlede logins pr. kvarter pr. IP-adresse.
 
 ### Bibliotekets API'er
 
@@ -122,7 +122,7 @@ Alt går gennem kommunens GO-side, fx `https://go.bibliotek.kk.dk/ap-service/…
 | Formål | Endpoint |
 |---|---|
 | Søgning og værker | `POST /fbi`: DBC's FBI GraphQL (`searchWithPagination`, `getMaterial`, `getManifestationsByFaust`). Forespørgslerne ligger i `server/queries/`. |
-| Filtrering på type | FBI-filteret `materialTypesSpecific`: `lydbog (online)`, `e-bog`, `bog` |
+| Filtrering på type | FBI-filteret `materialTypesSpecific: ["lydbog (online)"]`. Søgningen bruger det som standard; filteret "Alt" søger uden. |
 | Hjemlån og gebyrer | `GET /fbs/external/agencyid/patrons/patronid/loans/v2`, `GET …/patron/patronid/fees/v2` |
 | Reserveringer | `GET /fbs/external/v1/agencyid/patrons/patronid/reservations/v2`, `DELETE …/reservations?reservationid=` |
 | Digitale lån | `GET/POST /biblio/v1/loans` (lån med `{ "material_id": "<ISBN>" }`, kun lydbøger) |
