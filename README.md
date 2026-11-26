@@ -4,6 +4,8 @@ En lille, uofficiel webapp til at låne og lytte til **lydbøger** fra folkebibl
 
 > Olbib Go er et privat hobbyprojekt. Det er ikke lavet af, godkendt af eller tilknyttet Biblo GO!, Det Digitale Folkebibliotek, Københavns Biblioteker eller andre biblioteker, DBC eller WeDoBooks.
 
+**Prøv den på [lyd.box.raakode.dk](https://lyd.box.raakode.dk).** Den er gratis og uden garanti. Alle brugere deler serverens IP-adresse over for bibliotekerne, så bruger mange den på én gang, kan bibliotekets tjenester begrænse eller spærre den, og så virker den ikke for nogen. Det er nemt at køre sin egen: se [SELVHOSTING.md](SELVHOSTING.md).
+
 <p>
   <img src="docs/screenshots/2-mine-laan.png" width="190" alt="Mine lån med lydbøgerne i to kolonner">
   <img src="docs/screenshots/2b-andre-laan.png" width="190" alt="Andre lån foldet ud: e-bøger, hjemlånte bøger og reserveringer">
@@ -167,7 +169,8 @@ server/
   store.mjs        Krypterer og læser sessionen i brugerens cookie
   queries/         FBI GraphQL-forespørgsler
 public/            PWA'en: index.html, app.js, style.css, sw.js, manifest, ikoner, skrift
-ops/               systemd-unit og deploy-script
+ops/               Opsætning og deploy til forfatterens egen server
+SELVHOSTING.md     Vejledning i at køre din egen
 tools/             Værktøjer brugt under udviklingen (se nedenfor)
 ```
 
@@ -189,7 +192,7 @@ INSECURE_COOKIE=1 LYD_DATA=data node server/index.mjs
 | `LYD_UPSTREAM_QUEUE` | `200` | Højst så mange ventende anmodninger |
 | `INSECURE_COOKIE` | ikke sat | Sæt til `1` for at køre over almindelig HTTP lokalt |
 
-I drift kører serveren som en systemd-brugerservice (`ops/bibliotek.service`) bag en reverse proxy, der står for HTTPS.
+I drift kører serveren som en systemd-service bag en reverse proxy, der står for HTTPS. [SELVHOSTING.md](SELVHOSTING.md) beskriver trin for trin, hvordan du sætter din egen op med en lille server, et domæne og Caddy.
 
 ### Udviklingsværktøjer
 
