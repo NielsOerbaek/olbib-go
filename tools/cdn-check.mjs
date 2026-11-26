@@ -1,10 +1,12 @@
 import fs from 'node:fs';
 import { login } from '../server/go-login.mjs';
+import { site } from '../server/sites.mjs';
+const SITE = await site(process.env.SITE ?? 'kobenhavn');
 import { GoClient } from '../server/go.mjs';
 const line = fs.readFileSync('capture/traffic.jsonl', 'utf8').split('\n').find((l) => l.includes('identityProviderCallback/borchk') && l.includes('"method":"POST"'));
 const p = new URLSearchParams(JSON.parse(line).postData);
-const { jar } = await login(p.get('loginBibDkUserId'), p.get('pincode'));
-const go = new GoClient({ jar: jar.toJSON(), deviceId: process.argv[2], deviceAdded: true }, () => null);
+const { jar } = await login(p.get('loginBibDkUserId'), p.get('pincode'), SITE);
+const go = new GoClient(SITE, { jar: jar.toJSON(), deviceId: process.argv[2] }, () => null);
 const loans = await go.digitalLoans();
 const loan = loans.loans.find((l) => l.active && l.material_type === 'audiobook');
 const pl = await go.audiobookPlaylist(loan.id);

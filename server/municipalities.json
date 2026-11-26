@@ -1,0 +1,502 @@
+[
+ {
+  "id": "albertslund",
+  "label": "Albertslund",
+  "domain": "go.albertslundbibliotek.dk"
+ },
+ {
+  "id": "allerod",
+  "label": "Allerød",
+  "domain": "www.go.bibliotek.alleroed.dk"
+ },
+ {
+  "id": "assens",
+  "label": "Assens",
+  "domain": "www.go.assensbib.dk"
+ },
+ {
+  "id": "ballerup",
+  "label": "Ballerup",
+  "domain": "go.bib.ballerup.dk"
+ },
+ {
+  "id": "billund",
+  "label": "Billund",
+  "domain": "go.billundbib.dk"
+ },
+ {
+  "id": "bornholm",
+  "label": "Bornholm",
+  "domain": "go.bibliotek.brk.dk"
+ },
+ {
+  "id": "brondby",
+  "label": "Brøndby",
+  "domain": "www.go.brondby-bibliotekerne.dk"
+ },
+ {
+  "id": "bronderslev",
+  "label": "Brønderslev",
+  "domain": "www.go.bronderslevbib.dk"
+ },
+ {
+  "id": "dragor",
+  "label": "Dragør",
+  "domain": "www.go.drabib.dk"
+ },
+ {
+  "id": "egedal",
+  "label": "Egedal",
+  "domain": "go.egedalbibliotekerne.dk"
+ },
+ {
+  "id": "esbjerg",
+  "label": "Esbjerg",
+  "domain": "www.go.esbjergbibliotek.dk"
+ },
+ {
+  "id": "favrskov",
+  "label": "Favrskov",
+  "domain": "go.favrskovbib.dk"
+ },
+ {
+  "id": "faxe",
+  "label": "Faxe",
+  "domain": "www.go.faxebibliotek.dk"
+ },
+ {
+  "id": "fredensborg",
+  "label": "Fredensborg",
+  "domain": "www.go.fredensborgbibliotekerne.dk"
+ },
+ {
+  "id": "fredericia",
+  "label": "Fredericia",
+  "domain": "go.fredericiabib.dk"
+ },
+ {
+  "id": "frederiksberg",
+  "label": "Frederiksberg",
+  "domain": "go.fkb.dk"
+ },
+ {
+  "id": "frederikshavn",
+  "label": "Frederikshavn",
+  "domain": "go.bibl.frederikshavn.dk"
+ },
+ {
+  "id": "frederikssund",
+  "label": "Frederikssund",
+  "domain": "www.go.bibliotekerne.frederikssund.dk"
+ },
+ {
+  "id": "fureso",
+  "label": "Furesø",
+  "domain": "go.furbib.dk"
+ },
+ {
+  "id": "faaborg-midtfyn",
+  "label": "Faaborg-Midtfyn",
+  "domain": "go.fmbib.dk"
+ },
+ {
+  "id": "gentofte",
+  "label": "Gentofte",
+  "domain": "go.genbib.dk"
+ },
+ {
+  "id": "gladsaxe",
+  "label": "Gladsaxe",
+  "domain": "go.gladbib.dk"
+ },
+ {
+  "id": "glostrup",
+  "label": "Glostrup",
+  "domain": "www.go.glostrupbib.dk"
+ },
+ {
+  "id": "greve",
+  "label": "Greve",
+  "domain": "www.go.grevebibliotek.dk"
+ },
+ {
+  "id": "gribskov",
+  "label": "Gribskov",
+  "domain": "www.go.gribskovbib.dk"
+ },
+ {
+  "id": "katak",
+  "label": "Grønland / Nunatta Atuagaateqarfia",
+  "domain": "go.katak.gl"
+ },
+ {
+  "id": "guldborgsund",
+  "label": "Guldborgsund",
+  "domain": "go.guldbib.dk"
+ },
+ {
+  "id": "haderslev",
+  "label": "Haderslev",
+  "domain": "go.haderslevbibliotekerne.dk"
+ },
+ {
+  "id": "halsnaes",
+  "label": "Halsnæs",
+  "domain": "go.bibliotekerne.halsnaes.dk"
+ },
+ {
+  "id": "hedensted",
+  "label": "Hedensted",
+  "domain": "go.hedenstedbib.dk"
+ },
+ {
+  "id": "helsingor",
+  "label": "Helsingør",
+  "domain": "go.helsbib.dk"
+ },
+ {
+  "id": "herlev",
+  "label": "Herlev",
+  "domain": "www.go.herlevbibliotek.dk"
+ },
+ {
+  "id": "herning",
+  "label": "Herning",
+  "domain": "www.go.herningbib.dk"
+ },
+ {
+  "id": "hillerod",
+  "label": "Hillerød",
+  "domain": "go.hilbib.dk"
+ },
+ {
+  "id": "hjorring",
+  "label": "Hjørring",
+  "domain": "go.hjbib.dk"
+ },
+ {
+  "id": "holbaek",
+  "label": "Holbæk",
+  "domain": "go.bibliotek.holbaek.dk"
+ },
+ {
+  "id": "holstebro",
+  "label": "Holstebro",
+  "domain": "www.go.holstebrobibliotek.dk"
+ },
+ {
+  "id": "horsens",
+  "label": "Horsens",
+  "domain": "go.horsensbibliotek.dk"
+ },
+ {
+  "id": "hvidovre",
+  "label": "Hvidovre",
+  "domain": "www.go.hvidovrebib.dk"
+ },
+ {
+  "id": "hoje-taastrup",
+  "label": "Høje-Taastrup",
+  "domain": "go.bibliotek.htk.dk"
+ },
+ {
+  "id": "horsholm",
+  "label": "Hørsholm",
+  "domain": "go.biblioteket.horsholm.dk"
+ },
+ {
+  "id": "ikast-brande",
+  "label": "Ikast-Brande",
+  "domain": "www.go.ikast-brandebibliotek.dk"
+ },
+ {
+  "id": "ishoj",
+  "label": "Ishøj",
+  "domain": "www.go.ishojbib.dk"
+ },
+ {
+  "id": "jammerbugt",
+  "label": "Jammerbugt",
+  "domain": "go.jammerbugtbibliotekerne.dk"
+ },
+ {
+  "id": "kalundborg",
+  "label": "Kalundborg",
+  "domain": "www.go.kalundborgbib.dk"
+ },
+ {
+  "id": "kerteminde",
+  "label": "Kerteminde",
+  "domain": "go.kertemindebibliotekerne.dk"
+ },
+ {
+  "id": "kolding",
+  "label": "Kolding",
+  "domain": "go.koldingbib.dk"
+ },
+ {
+  "id": "kobenhavn",
+  "label": "København",
+  "domain": "go.bibliotek.kk.dk"
+ },
+ {
+  "id": "koge",
+  "label": "Køge",
+  "domain": "www.go.koegebib.dk"
+ },
+ {
+  "id": "langeland",
+  "label": "Langeland",
+  "domain": "go.langelandbibliotek.dk"
+ },
+ {
+  "id": "lejre",
+  "label": "Lejre",
+  "domain": "go.lejrebib.dk"
+ },
+ {
+  "id": "lemvig",
+  "label": "Lemvig",
+  "domain": "go.lemvigbibliotek.dk"
+ },
+ {
+  "id": "lolland",
+  "label": "Lolland",
+  "domain": "go.lollandbib.dk"
+ },
+ {
+  "id": "lyngby-taarbaek",
+  "label": "Lyngby-Taarbæk",
+  "domain": "www.go.lyngbybib.dk"
+ },
+ {
+  "id": "laeso",
+  "label": "Læsø",
+  "domain": "go.biblioteket.laesoe.dk"
+ },
+ {
+  "id": "mariagerfjord",
+  "label": "Mariagerfjord",
+  "domain": "go.mfbib.dk"
+ },
+ {
+  "id": "middelfart",
+  "label": "Middelfart",
+  "domain": "www.go.middelfartbibliotek.dk"
+ },
+ {
+  "id": "morso",
+  "label": "Morsø",
+  "domain": "www.go.bibliotekmorsoe.dk"
+ },
+ {
+  "id": "norddjurs",
+  "label": "Norddjurs",
+  "domain": "go.norddjursbib.dk"
+ },
+ {
+  "id": "nordfyn",
+  "label": "Nordfyn",
+  "domain": "www.go.nordfynsbib.dk"
+ },
+ {
+  "id": "nyborg",
+  "label": "Nyborg",
+  "domain": "www.go.nyborgbibliotek.dk"
+ },
+ {
+  "id": "naestved",
+  "label": "Næstved",
+  "domain": "www.go.naesbib.dk"
+ },
+ {
+  "id": "odder",
+  "label": "Odder",
+  "domain": "www.go.bibliotek.odder.dk"
+ },
+ {
+  "id": "odense",
+  "label": "Odense",
+  "domain": "www.go.odensebib.dk"
+ },
+ {
+  "id": "odsherred",
+  "label": "Odsherred",
+  "domain": "go.odsbib.dk"
+ },
+ {
+  "id": "randers",
+  "label": "Randers",
+  "domain": "www.go.randersbib.dk"
+ },
+ {
+  "id": "rebild",
+  "label": "Rebild",
+  "domain": "www.go.rebildbib.dk"
+ },
+ {
+  "id": "ringkobing-skjern",
+  "label": "Ringkøbing-Skjern",
+  "domain": "go.riskbib.dk"
+ },
+ {
+  "id": "ringsted",
+  "label": "Ringsted",
+  "domain": "go.ringstedbib.dk"
+ },
+ {
+  "id": "roskilde",
+  "label": "Roskilde",
+  "domain": "www.go.roskildebib.dk"
+ },
+ {
+  "id": "rudersdal",
+  "label": "Rudersdal",
+  "domain": "go.rudbib.dk"
+ },
+ {
+  "id": "rodovre",
+  "label": "Rødovre",
+  "domain": "www.go.rdb.dk"
+ },
+ {
+  "id": "samso",
+  "label": "Samsø",
+  "domain": "go.bibliotek.samsoe.dk"
+ },
+ {
+  "id": "silkeborg",
+  "label": "Silkeborg",
+  "domain": "go.silkeborgbib.dk"
+ },
+ {
+  "id": "skanderborg",
+  "label": "Skanderborg",
+  "domain": "www.go.bibliotek.skanderborg.dk"
+ },
+ {
+  "id": "skive",
+  "label": "Skive",
+  "domain": "www.go.skivebibliotek.dk"
+ },
+ {
+  "id": "slagelse",
+  "label": "Slagelse",
+  "domain": "go.slagelsebib.dk"
+ },
+ {
+  "id": "solrod2",
+  "label": "Solrød",
+  "domain": "go.solbib.dk"
+ },
+ {
+  "id": "soro",
+  "label": "Sorø",
+  "domain": "www.go.soroebib.dk"
+ },
+ {
+  "id": "stevns",
+  "label": "Stevns",
+  "domain": "www.go.stevnsbib.dk"
+ },
+ {
+  "id": "struer",
+  "label": "Struer",
+  "domain": "www.go.struerbibliotek.dk"
+ },
+ {
+  "id": "svendborg",
+  "label": "Svendborg",
+  "domain": "go.svendborgbibliotek.dk"
+ },
+ {
+  "id": "syddjurs",
+  "label": "Syddjurs",
+  "domain": "go.syddjursbibliotek.dk"
+ },
+ {
+  "id": "sydslesvig",
+  "label": "Sydslesvig",
+  "domain": "www.go.dcbib.dk"
+ },
+ {
+  "id": "sonderborg",
+  "label": "Sønderborg",
+  "domain": "go.biblioteket.sonderborg.dk"
+ },
+ {
+  "id": "thisted",
+  "label": "Thy",
+  "domain": "go.bib.kulturrummet.dk"
+ },
+ {
+  "id": "býarbókasavnið",
+  "label": "Torshavn / Býarbókasavnið",
+  "domain": "www.go.bbs.fo"
+ },
+ {
+  "id": "tonder",
+  "label": "Tønder",
+  "domain": "go.tbib.dk"
+ },
+ {
+  "id": "taarnby",
+  "label": "Tårnby",
+  "domain": "go.taarnbybib.dk"
+ },
+ {
+  "id": "vallensbaek",
+  "label": "Vallensbæk",
+  "domain": "go.kulturogborgerhus.vallensbaek.dk"
+ },
+ {
+  "id": "varde",
+  "label": "Varde",
+  "domain": "www.go.vardebib.dk"
+ },
+ {
+  "id": "vejen",
+  "label": "Vejen",
+  "domain": "go.vejbib.dk"
+ },
+ {
+  "id": "vejle",
+  "label": "Vejle",
+  "domain": "go.vejlebib.dk"
+ },
+ {
+  "id": "vesthimmerland",
+  "label": "Vesthimmerland",
+  "domain": "www.go.vhbib.dk"
+ },
+ {
+  "id": "viborg",
+  "label": "Viborg",
+  "domain": "go.viborgbib.dk"
+ },
+ {
+  "id": "vordingborg",
+  "label": "Vordingborg",
+  "domain": "www.go.vordingborgbibliotekerne.dk"
+ },
+ {
+  "id": "aero",
+  "label": "Ærø",
+  "domain": "www.go.arrebib.dk"
+ },
+ {
+  "id": "aabenraa",
+  "label": "Aabenraa",
+  "domain": "www.go.aabenraabib.dk"
+ },
+ {
+  "id": "aalborg",
+  "label": "Aalborg",
+  "domain": "www.go.aalborgbibliotekerne.dk"
+ },
+ {
+  "id": "aarhus",
+  "label": "Aarhus",
+  "domain": "www.go.aakb.dk"
+ }
+]

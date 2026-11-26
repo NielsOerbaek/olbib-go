@@ -1,6 +1,6 @@
 # Olbib Go
 
-En lille, uofficiel webapp til folkebibliotekernes børneunivers [Biblo GO!](https://biblogo.dk) (tidligere eReolen GO), lavet til ældre telefoner. Indtil videre virker den med Københavns Bibliotekers GO ([go.bibliotek.kk.dk](https://go.bibliotek.kk.dk)).
+En lille, uofficiel webapp til folkebibliotekernes børneunivers [Biblo GO!](https://biblogo.dk) (tidligere eReolen GO), lavet til ældre telefoner. Man vælger sin kommune ved login, og appen taler så med den kommunes GO-side.
 
 > Olbib Go er et privat hobbyprojekt. Det er ikke lavet af, godkendt af eller tilknyttet Biblo GO!, Det Digitale Folkebibliotek, Københavns Biblioteker eller andre biblioteker, DBC eller WeDoBooks.
 
@@ -21,13 +21,15 @@ Olbib Go er den vej ind. Det er en simpel webapp, der kan lægges på hjemmeskæ
 
 ## Hvad kan den
 
-- **Logge ind** med lånernummer eller CPR og pinkode. Man forbliver logget ind på telefonen.
+- **Logge ind** i sin egen kommune med lånernummer eller CPR og pinkode. Man forbliver logget ind på telefonen.
 - **Mine lån:** lydbøger og e-bøger, hjemlånte bøger med afleveringsdato, fornyelse (en ad gangen eller alle) og reserveringer med kønummer og afhentning.
 - **Søg** mens man skriver, med filtre for lydbøger, e-bøger og fysiske bøger.
 - **Låne** lydbøger og e-bøger og **reservere** fysiske bøger.
 - **Lytte** til lydbøger: ±30 sekunder, afspilningshastighed, husker hvor man kom til, styring fra låseskærmen og en søvntimer.
 
 E-bøger kan lånes, men ikke læses i appen. Se [E-bøger](#e-bøger) nedenfor.
+
+Appen er brugt og testet med Københavns Biblioteker. De andre kommuners GO-sider er bygget på samme måde, og deres opsætning er testet, men ikke login med et rigtigt lånerkort.
 
 ## Telefoner og browsere
 
@@ -41,15 +43,30 @@ Kort sagt: **serveren gemmer ingenting om brugerne.** Alt om et login ligger kry
 
 | Hvor | Hvad | Hvor længe |
 |---|---|---|
-| **Brugerens cookie** (`lyd`) | Ét krypteret felt med GO's session-cookies, lånernummer og pinkode (så serveren kan logge ind igen, når GO's session udløber efter cirka et døgn), navnet fra GO og enheds-id'et til lydbøger. | Indtil man logger ud, højst 180 dage |
-| **Telefonens browser** (localStorage) | Hvor langt man er nået i hver lydbog, den seneste lydbog, afspilningshastighed og valgt søgefilter. | Indtil browserdata slettes |
+| **Brugerens cookie** (`lyd`) | Ét krypteret felt med valgt kommune, GO's session-cookies, lånernummer og pinkode (så serveren kan logge ind igen, når GO's session udløber efter cirka et døgn), navnet fra GO og enheds-id'et til lydbøger. | Indtil man logger ud, højst 180 dage |
+| **Telefonens browser** (localStorage) | Hvor langt man er nået i hver lydbog, den seneste lydbog, afspilningshastighed, valgt søgefilter og senest valgte kommune. | Indtil browserdata slettes |
 | **Serverens disk** | Kun en tilfældig hemmelighed (`secret`), som bruges til at kryptere cookies og beregne enheds-id'er. Ingen brugerliste, ingen sessioner. | Fast |
-| **Serverens hukommelse** | Kortlivede billetter til lydbogsafspilning (30 min), midlertidige Firebase-tokens (1 time), hvilke enheder der er registreret, og tidspunkter for fejlede logins pr. IP. | Forsvinder ved genstart |
+| **Serverens hukommelse** | Kortlivede billetter til lydbogsafspilning (30 min), midlertidige Firebase-tokens (1 time), hvilke enheder der er registreret, tællere til hastighedsbegrænsning, tidspunkter for fejlede logins pr. IP, anonyme trafiktællere og kommunernes opsætning. | Forsvinder ved genstart |
 | **Serverens log** | Intet. Logning er slået fra som standard. | – |
 
 Serveren ser naturligvis de data, der passerer igennem den, mens en anmodning står på, fordi den er mellemled til GO. Den gemmer dem bare ikke.
 
 Cookien er krypteret og autentificeret med AES-256-GCM. Den er `HttpOnly`, `Secure` og `SameSite=Lax`, så JavaScript ikke kan læse den, og den ikke sendes med, når andre sider laver anmodninger i baggrunden. En ændret eller for gammel cookie bliver afvist. Hvis serverens hemmelighed udskiftes, bliver alle logget ud.
+
+### Trafik og belastning
+
+Alle brugere deler serverens IP-adresse over for bibliotekets tjenester. Mange anmodninger fra én IP kan føre til, at den bliver begrænset eller blokeret, og så rammer det alle. Derfor:
+
+- **Loft over samtidige anmodninger:** højst 12 anmodninger til bibliotekets tjenester ad gangen (`LYD_UPSTREAM_CONCURRENCY`). Resten venter i kø, højst 200 og højst 20 sekunder (`LYD_UPSTREAM_QUEUE`). Bliver køen fuld, svarer appen "Der er travlt lige nu".
+- **Hastighedsbegrænsning pr. bruger:** 90 anmodninger i minuttet (med plads til en kort spids på 40), 300 forsider i minuttet og 10 loginforsøg i minuttet pr. IP. Derudover højst 5 fejlede logins pr. kvarter pr. IP, så forkerte pinkoder ikke får Adgangsplatformen til at spærre serverens IP. Udlogning er aldrig begrænset.
+- **Ingen cache:** svar fra bibliotekets tjenester gemmes ikke. Kun kommunernes opsætning og filiallister holdes i hukommelsen.
+- **Anonyme tællere:** antal anmodninger pr. type og statuskode, anmodninger til bibliotekerne, fejl og svar med 429 fra bibliotekerne, hvor mange der blev begrænset, samt kø og samtidighed. Både i alt og minut for minut den seneste time. Der er ingen id'er, IP-adresser, titler eller kommuner i tællerne. De kan kun hentes direkte på serveren, ikke gennem den offentlige adresse:
+
+  ```sh
+  curl -s http://<HOST>:<PORT>/api/stats
+  ```
+
+  Anmodninger, der kommer gennem en reverse proxy (med `X-Forwarded-For`), får 404.
 
 ### Logning
 
@@ -61,7 +78,7 @@ Logning er slået fra. Til fejlsøgning kan den slås til med `LYD_LOG=1`. Så l
  iPhone (Safari, iOS 16)                     Server (Node.js)                    Bibliotekets tjenester
 ┌──────────────────────┐   HTTPS / JSON   ┌───────────────────────┐   HTTPS   ┌──────────────────────────────────┐
 │ public/  (PWA)       │ ───────────────▶ │ server/index.mjs      │ ────────▶ │ login.bib.dk (Adgangsplatformen) │
-│ vanilla JS, ingen    │                  │  login + sessioner    │           │ go.bibliotek.kk.dk/ap-service:   │
+│ vanilla JS, ingen    │                  │  login + sessioner    │           │ kommunens GO-side /ap-service:   │
 │ build-trin           │ ◀─────────────── │  proxy til GO's API'er│ ◀──────── │   FBI (søgning), FBS (hjemlån),  │
 │                      │                  │  cover-proxy          │           │   biblio (digitale lån)          │
 │ <audio> ◀── HLS ─────┼──────────────────┼───────────────────────┼─────────▶ │ WeDoBooks (Firebase + CDN)       │
@@ -74,20 +91,31 @@ Frontend og backend er bevidst simple: ingen frameworks, ingen build-trin og ing
 
 GO er en Next.js-app, og dens API'er under `/ap-service` er lavet til at blive kaldt fra GO's eget domæne. En webapp på et andet domæne kan ikke kalde dem direkte fra browseren, og den kan heller ikke gennemføre login-flowet, som springer mellem tre domæner med cookies. Serveren gør derfor det, en browser på GO ville gøre, og giver appen et lille, stabilt JSON-API.
 
+### Kommuner
+
+Listen over kommuner og deres GO-adresser kommer fra kommunevælgeren på [biblogo.dk](https://biblogo.dk) og ligger i `server/municipalities.json` (opdateres med `node tools/update-municipalities.mjs`). Alle GO-sider er den samme app, og hver side har sin egen opsætning indlejret i siden (`dplCmsConfig`):
+
+- bibliotekets navn og login-link (fx `https://www.aakb.dk/login?current-path=/go-login`),
+- om lydbøger og e-bøger er slået til (det er de fx ikke i Grønland),
+- Firebase-opsætning til lydbøger,
+- filialer, der ikke skal med i tilgængelighed.
+
+Serveren læser opsætningen fra kommunens GO-side og holder den i hukommelsen i nogle timer. Søgninger begrænses til bibliotekets egne filialer, som hentes fra FBS (`/fbs/external/v1/agencyid/branches`).
+
 ### Login
 
 Login går gennem Adgangsplatformen ([login.bib.dk](https://login.bib.dk), DBC's open source-projekt [hejmdal](https://github.com/DBCDK/hejmdal)):
 
-1. Serveren åbner GO's login-link, som via `bibliotek.kk.dk` sender videre til `login.bib.dk/oauth/authorize`.
-2. Serveren finder login-formularen og sender lånernummer og pinkode (identitetsudbyderen "borchk").
-3. Redirect-kæden fortsætter tilbage via `bibliotek.kk.dk` til `go.bibliotek.kk.dk/auth/callback/...`, som sætter GO's session-cookie.
+1. Serveren åbner kommunens login-link, som via bibliotekets hjemmeside (fx `bibliotek.kk.dk`) sender videre til `login.bib.dk/oauth/authorize`.
+2. Login-siden er forudvalgt til biblioteket. Serveren læser bibliotekets nummer og navn fra formularen og sender dem sammen med lånernummer og pinkode (identitetsudbyderen "borchk").
+3. Redirect-kæden fortsætter tilbage via bibliotekets hjemmeside til GO-sidens `/auth/callback/...`, som sætter GO's session-cookie.
 4. GO's cookies krypteres ind i brugerens egen cookie (se [Hvad gemmes hvor](#hvad-gemmes-hvor)). GO's `/ap-service` accepterer GO's session-cookie alene. Når GO fornyer sine cookies, sender serveren en opdateret cookie med i svaret.
 
 Fejlkoder fra hejmdal (`bonfd`, `bonui`, `tmul` …) oversættes til danske beskeder. Adgangsplatformen tæller forkerte forsøg både pr. bruger og pr. IP-adresse. Alle brugere af én server deler IP-adresse, så serveren tillader højst fem fejlede logins pr. kvarter pr. klient.
 
 ### Bibliotekets API'er
 
-Alt går gennem GO's proxy `https://go.bibliotek.kk.dk/ap-service/…`:
+Alt går gennem kommunens GO-side, fx `https://go.bibliotek.kk.dk/ap-service/…`:
 
 | Formål | Endpoint |
 |---|---|
@@ -106,7 +134,7 @@ FBS-endpointsene er dokumenteret i den åbne OpenAPI-beskrivelse i [dpl-react](h
 Lydbøger leveres af WeDoBooks via Firebase:
 
 1. `POST /ap-service/biblio/v1/auth/create-sign-in-token` giver et Firebase custom token.
-2. Det byttes til et ID-token hos Google Identity Toolkit (`accounts:signInWithCustomToken`) med GO's offentlige Firebase-nøgle. Nøglen ligger ikke i koden: serveren læser den fra GO's forside (`firebaseApiKey`), når den skal bruges første gang.
+2. Det byttes til et ID-token hos Google Identity Toolkit (`accounts:signInWithCustomToken`) med GO's offentlige Firebase-nøgle. Nøglen ligger ikke i koden: serveren læser den fra kommunens GO-side (`firebaseApiKey`).
 3. Afspilleren registreres som en "enhed" (`Devices-add`, `Devices-set_active`). WeDoBooks tillader **højst 6 enheder pr. konto**, så Olbib Go bruger ét fast enheds-id pr. lånerkort (en HMAC af lånernummeret med en hemmelighed på serveren). Ellers ville hvert nyt login bruge en enhed.
 4. `Streaming-audiobook_playlist?checkoutId=…` returnerer en HLS-playliste (AES-128) med signerede URL'er til lydfiler og nøgle på WeDoBooks' CDN.
 
@@ -131,6 +159,10 @@ server/
   index.mjs        HTTP-server: API-ruter, statiske filer, cover-proxy, valgfri logning
   go.mjs           Klient til GO's API'er og WeDoBooks/Firebase
   go-login.mjs     Login-flowet og en simpel cookie-krukke
+  sites.mjs        Kommuneliste og hver kommunes GO-opsætning
+  upstream.mjs     Alle anmodninger til bibliotekerne: loft over samtidighed og tællere
+  metrics.mjs      Anonyme trafiktællere
+  municipalities.json  Kommuner og GO-adresser fra biblogo.dk
   store.mjs        Krypterer og læser sessionen i brugerens cookie
   queries/         FBI GraphQL-forespørgsler
 public/            PWA'en: index.html, app.js, style.css, sw.js, manifest, ikoner, skrift
@@ -152,6 +184,8 @@ INSECURE_COOKIE=1 LYD_DATA=data node server/index.mjs
 | `PORT` / `HOST` | `3800` / `127.0.0.1` | Hvor serveren lytter |
 | `LYD_DATA` | `./data` | Mappe til serverens hemmelighed (`secret`) |
 | `LYD_LOG` | ikke sat | Sæt til `1` for at slå logning til |
+| `LYD_UPSTREAM_CONCURRENCY` | `12` | Højst så mange samtidige anmodninger til bibliotekerne |
+| `LYD_UPSTREAM_QUEUE` | `200` | Højst så mange ventende anmodninger |
 | `INSECURE_COOKIE` | ikke sat | Sæt til `1` for at køre over almindelig HTTP lokalt |
 
 I drift kører serveren som en systemd-brugerservice (`ops/bibliotek.service`) bag en reverse proxy, der står for HTTPS.
@@ -164,6 +198,7 @@ I drift kører serveren som en systemd-brugerservice (`ops/bibliotek.service`) b
 - `show.mjs` viser udvalgte anmodninger fra optagelsen.
 - `smoke.mjs`, `ui-check.mjs`, `player-fit.mjs` og `cover-check.mjs` er røgtest af API og brugerflade mod en kørende server.
 - `screenshots.mjs` tager skærmbillederne til denne README, med eksempeldata i stedet for rigtige lån.
+- `update-municipalities.mjs` henter listen over kommuner og GO-adresser fra biblogo.dk.
 - `devices.mjs` viser (og med `--clean` fjerner) de WeDoBooks-enheder, Olbib Go har registreret.
 
 **Pas på:** optagelsen i `capture/` indeholder dit lånernummer og din pinkode i klar tekst. Mappen er i `.gitignore` og må aldrig deles. Testscriptene læser loginoplysningerne derfra.

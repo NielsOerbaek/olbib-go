@@ -18,7 +18,7 @@ const shot = async (name) => { await page.evaluate(() => { const t = document.qu
 
 // 1. login screen (empty form)
 await page.goto(BASE + '/'); await page.waitForSelector('#card'); await settle(); await shot('1-login');
-await page.fill('#card', p.get('loginBibDkUserId')); await page.fill('#pin', p.get('pincode'));
+await page.waitForSelector('#site:not([disabled])'); await page.selectOption('#site', process.env.SITE ?? 'kobenhavn'); await page.fill('#card', p.get('loginBibDkUserId')); await page.fill('#pin', p.get('pincode'));
 await page.click('button[type=submit]'); await page.waitForSelector('.row, .book', { timeout: 30000 });
 
 // build sample loans from public search results

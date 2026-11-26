@@ -10,7 +10,7 @@ page.on('console', (m) => console.log('console', m.type(), m.text().slice(0, 200
 page.on('requestfailed', (r) => r.url().includes('pubhub') && console.log('FAILED', r.url().slice(0, 80), r.failure()?.errorText));
 await page.goto(BASE + '/');
 await page.waitForSelector('#card');
-await page.fill('#card', p.get('loginBibDkUserId')); await page.fill('#pin', p.get('pincode'));
+await page.waitForSelector('#site:not([disabled])'); await page.selectOption('#site', process.env.SITE ?? 'kobenhavn'); await page.fill('#card', p.get('loginBibDkUserId')); await page.fill('#pin', p.get('pincode'));
 await page.click('button[type=submit]');
 await page.waitForSelector('.item', { timeout: 30000 }); await page.waitForTimeout(3000);
 console.log(JSON.stringify(await page.evaluate(() => [...document.querySelectorAll('img.cover')].slice(0, 6).map((i) => ({ src: i.src.slice(0, 60), ok: i.complete && i.naturalWidth > 0, w: i.naturalWidth })))));

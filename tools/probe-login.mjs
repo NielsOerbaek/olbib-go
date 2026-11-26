@@ -4,7 +4,7 @@ import { login, req } from '../server/go-login.mjs';
 const line = fs.readFileSync('capture/traffic.jsonl', 'utf8').split('\n').find(l => l.includes('identityProviderCallback/borchk') && l.includes('"method":"POST"'));
 const p = new URLSearchParams(JSON.parse(line).postData);
 if (!/^\d{4,}$/.test(p.get('loginBibDkUserId') ?? '') || !/^\d{4,}$/.test(p.get('pincode') ?? '')) throw new Error('creds not found in capture');
-const { jar, session } = await login(p.get('loginBibDkUserId'), p.get('pincode'));
+const { jar, session } = await login(p.get('loginBibDkUserId'), p.get('pincode'), SITE);
 console.log('session', session.isLoggedIn, session.expires);
 console.log('cookies', JSON.stringify(jar.toJSON().map(([d, m]) => [d, m.map(([k]) => k)])));
 fs.writeFileSync('capture/jar.json', JSON.stringify(jar.toJSON()));

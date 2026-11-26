@@ -13,7 +13,7 @@ page.on('console', (m) => m.type() === 'error' && errors.push('console: ' + m.te
 const shot = async (n) => { await page.waitForTimeout(700); await page.screenshot({ path: `${OUT}/${n}.png` }); };
 await page.goto((process.env.BASE ?? 'http://127.0.0.1:3800') + '/');
 await page.waitForSelector('#card'); await shot('1-login');
-await page.fill('#card', p.get('loginBibDkUserId')); await page.fill('#pin', p.get('pincode'));
+await page.waitForSelector('#site:not([disabled])'); await page.selectOption('#site', process.env.SITE ?? 'kobenhavn'); await page.fill('#card', p.get('loginBibDkUserId')); await page.fill('#pin', p.get('pincode'));
 await page.click('button[type=submit]');
 await page.waitForSelector('.row, .book', { timeout: 30000 }); await shot('2-loans');
 await page.click('#dock a[data-tab=search]'); await page.type('#q', 'wimpy kid', { delay: 60 });

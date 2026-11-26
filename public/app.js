@@ -1,4 +1,4 @@
-// Olbib Go — alternate frontend for go.bibliotek.kk.dk, built for old iPhones (iOS 16 Safari, PWA).
+// Olbib Go — alternate frontend for Biblo GO! (every municipality), built for old phones (iOS 16 Safari, PWA).
 const $ = (s, el = document) => el.querySelector(s);
 const view = $('#view');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -89,19 +89,25 @@ function chrome({ title = null, back = false, tab = null, dock = true }) {
 }
 $('#back').onclick = () => (history.length > 1 ? history.back() : go('#/'));
 
+let meInfo = {}; // { name, library, goUrl, digital, site }
+async function loadMe() {
+  meInfo = await api('GET', '/me').catch(() => ({}));
+  me = meInfo.loggedOut ? null : (meInfo.name ?? (meInfo.site ? 'dig' : null));
+}
+
 async function render() {
   const seq = ++renderSeq;
   const [, route, arg] = (location.hash || '#/').match(/^#\/([^/]*)\/?(.*)$/) || [];
   if (me === undefined) {
     view.innerHTML = spinner();
-    me = (await api('GET', '/me').catch(() => ({}))).name ?? null;
+    await loadMe();
   }
   if (me === null && route !== 'login') return go('#/login');
   window.scrollTo(0, 0);
   // views call alive() after each await so a slow response never paints over a newer screen
   const alive = () => seq === renderSeq;
   try {
-    if (route === 'login') return viewLogin();
+    if (route === 'login') return await viewLogin(alive);
     if (route === 'search') return await viewSearch(decodeURIComponent(arg || ''), alive);
     if (route === 'work') return await viewWork(decodeURIComponent(arg), alive);
     if (route === 'listen') return await viewListen(arg, alive);
@@ -118,26 +124,41 @@ async function render() {
 window.addEventListener('hashchange', render);
 
 // ---------- views ----------
-function viewLogin() {
+async function viewLogin(alive) {
   chrome({});
+  const saved = localStorage.getItem('site') || '';
   view.innerHTML = `
-    <div class="hello"><img src="/icon-180.png" alt=""><h2>Hej!</h2><p>Log ind med dit lånerkort fra Københavns Biblioteker.</p></div>
+    <div class="hello"><img src="/icon-180.png" alt=""><h2>Hej!</h2><p>Log ind med dit lånerkort fra dit bibliotek.</p></div>
     <form class="card" autocomplete="on">
+      <label for="site">Kommune</label>
+      <div class="select-wrap"><select id="site" required disabled><option value="">Henter kommuner…</option></select><span class="spin" id="site-spin"></span></div>
       <label for="card">Lånernummer eller CPR</label>
       <input id="card" name="username" type="tel" inputmode="numeric" autocomplete="username" required>
       <label for="pin">Pinkode</label>
       <input id="pin" name="password" type="password" inputmode="numeric" autocomplete="current-password" required>
       <p class="err" id="err" hidden></p>
       <p style="margin:20px 0 0"><button class="btn go block" type="submit">Log ind</button></p>
-      <p class="hint">Du bliver ved med at være logget ind på denne telefon.</p>
+      <p class="hint">Du bliver ved med at være logget ind på denne telefon. Olbib Go er ikke bibliotekets egen app.</p>
     </form>`;
+  const sel = $('#site');
+  try {
+    const list = await api('GET', '/municipalities');
+    if (!alive()) return;
+    sel.innerHTML = '<option value="">Vælg kommune</option>' + list.map((m) => `<option value="${esc(m.id)}"${m.id === saved ? ' selected' : ''}>${esc(m.label)}</option>`).join('');
+    sel.disabled = false;
+  } catch (e) {
+    sel.innerHTML = '<option value="">Kunne ikke hente kommuner</option>';
+  }
+  $('#site-spin').hidden = true;
   $('form', view).onsubmit = async (e) => {
     e.preventDefault();
+    if (!sel.value) { $('#err').hidden = false; $('#err').textContent = 'Vælg din kommune.'; return; }
     const done = busy($('button', e.target), 'Logger ind');
     $('#err').hidden = true;
     try {
-      const r = await api('POST', '/login', { card: $('#card').value, pin: $('#pin').value });
-      me = r.name || 'dig';
+      await api('POST', '/login', { site: sel.value, card: $('#card').value, pin: $('#pin').value });
+      localStorage.setItem('site', sel.value);
+      await loadMe();
       go('#/');
     } catch (err) {
       $('#err').hidden = false; $('#err').textContent = err.message;
@@ -337,14 +358,14 @@ function viewRead() {
   chrome({ back: true, title: 'E-bog' });
   view.innerHTML = `<div class="hello"><h2>E-bøger kommer ikke her</h2>
     <p>E-bøger er kopibeskyttede og kan kun læses i bibliotekets egen læser.</p></div>
-    <p style="margin-top:22px"><a class="btn go block" href="https://go.bibliotek.kk.dk/user/profile" target="_blank" rel="noopener">Åbn i GO</a></p>`;
+    ${meInfo.goUrl ? `<p style="margin-top:22px"><a class="btn go block" href="${esc(meInfo.goUrl)}/user/profile" target="_blank" rel="noopener">Åbn i GO</a></p>` : ''}`;
 }
 
 function viewAccount() {
   chrome({ tab: 'account' });
-  view.innerHTML = `<div class="hello"><img src="/icon-180.png" alt=""><h2>${esc(me)}</h2><p>Logget ind med dit lånerkort.</p></div>
+  view.innerHTML = `<div class="hello"><img src="/icon-180.png" alt=""><h2>${esc(me)}</h2><p>Logget ind med dit lånerkort${meInfo.library ? ` hos ${esc(meInfo.library)}` : ''}.</p></div>
     <p style="margin-top:22px"><button class="btn block" id="logout">Log ud</button></p>`;
-  $('#logout').onclick = async (e) => { busy(e.currentTarget, 'Logger ud'); player.stop(); await api('POST', '/logout').catch(() => {}); me = null; go('#/login'); };
+  $('#logout').onclick = async (e) => { busy(e.currentTarget, 'Logger ud'); player.stop(); await api('POST', '/logout').catch(() => {}); me = null; meInfo = {}; go('#/login'); };
 }
 
 // ---------- audiobook player ----------

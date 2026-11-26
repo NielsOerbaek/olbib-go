@@ -1,4 +1,6 @@
-// Server-side login to go.bibliotek.kk.dk via Adgangsplatformen borchk (card + PIN).
+// Server-side login to a Biblo GO! site via Adgangsplatformen borchk (card + PIN).
+import { upstream } from './upstream.mjs';
+
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0 Safari/537.36';
 
 export class Jar {
@@ -25,7 +27,7 @@ export class Jar {
 export async function req(jar, url, opts = {}, maxHops = 15) {
   let method = opts.method ?? 'GET', body = opts.body, headers = opts.headers ?? {};
   for (let hop = 0; hop < maxHops; hop++) {
-    const res = await fetch(url, { method, body, redirect: 'manual',
+    const res = await upstream(url, { method, body, redirect: 'manual',
       headers: { 'user-agent': UA, cookie: jar.header(url), ...headers } });
     jar.set(url, res);
     const loc = res.headers.get('location');
@@ -43,7 +45,7 @@ const MESSAGES = {
   bonfd: 'Forkert lånernummer eller pinkode.',
   bonui: 'Forkert lånernummer eller pinkode.',
   tmul: 'For mange forkerte forsøg. Prøv igen senere.',
-  bnimu: 'Du bor ikke i Københavns Kommune ifølge biblioteket.',
+  bnimu: 'Ifølge biblioteket bor du ikke i den valgte kommune.',
 };
 export class LoginError extends Error {
   constructor(code, retries) {
@@ -52,17 +54,23 @@ export class LoginError extends Error {
   }
 }
 
-export async function login(card, pin) {
+// site: from sites.mjs (base = GO site, loginUrl = the library's "go-login" link)
+export async function login(card, pin, site) {
   const jar = new Jar();
-  await req(jar, 'https://go.bibliotek.kk.dk/');
-  const { res, url } = await req(jar, 'https://bibliotek.kk.dk/login?current-path=/go-login');
+  await req(jar, site.base + '/');
+  const { res, url } = await req(jar, site.loginUrl);
   const html = await res.text();
   const action = html.match(/action="(\/login\/identityProviderCallback\/borchk\/[^"]+)"/)?.[1];
-  if (!action) throw new Error('login form not found at ' + url);
-  const form = new URLSearchParams({ agency: '710100', libraryName: 'København', loginBibDkUserId: card, pincode: pin });
+  if (!action) throw new Error('login form not found at ' + new URL(url).host);
+  // the library's own login link pre-selects it: read its agency number and name from the form
+  const agency = html.match(/<input[^>]*value="(\d{6})"[^>]*name="agency"[^>]*id="libraryid-input"/)?.[1]
+    ?? html.match(/<input[^>]*id="libraryid-input"[^>]*value="(\d{6})"/)?.[1];
+  const libraryName = html.match(/<input[^>]*id="libraryname-input"[^>]*value="([^"]*)"/)?.[1] ?? '';
+  if (!agency) throw new Error('library not preselected on login form');
+  const form = new URLSearchParams({ agency, libraryName: decodeEntities(libraryName), loginBibDkUserId: card, pincode: pin });
   const done = await req(jar, new URL(action, url).href, { method: 'POST', body: form,
-    headers: { 'content-type': 'application/x-www-form-urlencoded', origin: 'https://login.bib.dk' } });
-  const session = await (await req(jar, 'https://go.bibliotek.kk.dk/auth/session')).res.json();
+    headers: { 'content-type': 'application/x-www-form-urlencoded', origin: new URL(url).origin } });
+  const session = await (await req(jar, site.base + '/auth/session')).res.json();
   if (!session.isLoggedIn) {
     const u = new URL(done.url);
     const code = u.searchParams.get('error'); const retries = u.searchParams.get('retries');
@@ -71,3 +79,6 @@ export async function login(card, pin) {
   }
   return { jar, session };
 }
+
+const decodeEntities = (s) => s.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n)).replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+  .replace(/&quot;/g, '"').replace(/&apos;|&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');

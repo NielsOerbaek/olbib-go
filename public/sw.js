@@ -1,5 +1,5 @@
 // Network-first app shell so updates arrive immediately; cached copy when offline.
-const CACHE = 'olbib-go-v7';
+const CACHE = 'olbib-go-v8';
 const SHELL = ['/', '/app.js', '/style.css', '/manifest.webmanifest', '/icon-180.png', '/icon-32.png', '/fonts/fredoka-latin.woff2'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => {

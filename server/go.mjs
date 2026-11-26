@@ -1,24 +1,15 @@
-// Talks to go.bibliotek.kk.dk on behalf of one logged-in user.
+// Talks to one Biblo GO! site (and WeDoBooks) on behalf of one logged-in user.
 import fs from 'node:fs';
 import { login, req, Jar } from './go-login.mjs';
+import { upstream } from './upstream.mjs';
 
-const GO = 'https://go.bibliotek.kk.dk';
 const FN = 'https://europe-west1-biblio-prod-dk.cloudfunctions.net';
-
-// GO's public Firebase web key is not ours to ship: read it from GO's own front page
-// (it is embedded there as "firebaseApiKey") and cache it for the life of the process.
-let firebaseKey = process.env.FIREBASE_WEB_KEY || null;
-async function getFirebaseKey() {
-  if (firebaseKey) return firebaseKey;
-  const html = await (await fetch(GO + '/')).text();
-  const m = html.match(/firebaseApiKey\\*"\s*:\s*\\*"(AIza[0-9A-Za-z_-]{30,})/);
-  if (!m) throw new HttpError(502, 'could not find GO firebase key');
-  return (firebaseKey = m[1]);
-}
 const Q = (n) => fs.readFileSync(new URL(`./queries/${n}.graphql`, import.meta.url), 'utf8');
-const BRANCHES = JSON.parse(fs.readFileSync(new URL('./queries/branches.json', import.meta.url), 'utf8'));
 const QUERIES = Object.fromEntries(['searchWithPagination', 'getMaterial', 'getManifestationsByFaust'].map((n) => [n, Q(n)]));
 
+// The library's branches, used to limit searches to what that library has. Fetched per site
+// from FBS (minus the branches the site itself leaves out) and kept in memory: library config, not user data.
+const branchCache = new Map(); // site id -> { at, ids }
 export class HttpError extends Error {
   constructor(status, msg, body) { super(msg); this.status = status; this.body = body; }
 }
@@ -29,9 +20,10 @@ const fbTokens = new Map();
 const devicesAdded = new Set();
 
 export class GoClient {
-  // state: { jar, deviceId }
+  // site: from sites.mjs. state: { jar, deviceId }
   // getCreds: () => {card, pin} | null  (for silent re-login)
-  constructor(state, getCreds, onChange) {
+  constructor(site, state, getCreds, onChange) {
+    this.site = site; this.base = site.base;
     this.state = state; this.jar = Jar.from(state.jar ?? []);
     this.getCreds = getCreds; this.onChange = onChange;
   }
@@ -41,15 +33,15 @@ export class GoClient {
   async relogin() {
     const creds = this.getCreds();
     if (!creds) throw new HttpError(401, 'session expired');
-    const { jar } = await login(creds.card, creds.pin);
+    const { jar } = await login(creds.card, creds.pin, this.site);
     this.jar = jar; fbTokens.delete(this.state.deviceId); this.save();
   }
 
   async raw(path, opts = {}, retry = true) {
-    const url = path.startsWith('http') ? path : GO + path;
+    const url = path.startsWith('http') ? path : this.base + path;
     const { res } = await req(this.jar, url, opts);
     this.save();
-    if ((res.status === 401 || res.status === 403) && retry && url.startsWith(GO)) {
+    if ((res.status === 401 || res.status === 403) && retry && url.startsWith(this.base)) {
       await this.relogin();
       return this.raw(path, opts, false);
     }
@@ -59,7 +51,7 @@ export class GoClient {
   async ap(path, { method = 'GET', body } = {}) {
     const res = await this.raw('/ap-service' + path, {
       method, body: body === undefined ? undefined : JSON.stringify(body),
-      headers: body === undefined ? {} : { 'content-type': 'application/json', origin: GO },
+      headers: body === undefined ? {} : { 'content-type': 'application/json', origin: this.base },
     });
     const text = await res.text();
     let data; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
@@ -79,8 +71,17 @@ export class GoClient {
   }
 
   // ---------- catalogue ----------
-  search(q, offset = 0, limit = 20, materialTypes = null) {
-    const filters = { branchId: BRANCHES, ...(materialTypes ? { materialTypesSpecific: materialTypes } : {}) };
+  async branches() {
+    const hit = branchCache.get(this.site.id);
+    if (hit && Date.now() - hit.at < 6 * 3600_000) return hit.ids;
+    const list = await this.ap('/fbs/external/v1/agencyid/branches');
+    const ids = list.map((b) => b.branchId.replace(/^\D+-/, '')).filter((id) => !this.site.blacklistedBranches.has(id));
+    branchCache.set(this.site.id, { at: Date.now(), ids });
+    return ids;
+  }
+  async search(q, offset = 0, limit = 20, materialTypes = null) {
+    const branchId = await this.branches();
+    const filters = { ...(branchId.length ? { branchId } : {}), ...(materialTypes ? { materialTypesSpecific: materialTypes } : {}) };
     return this.fbi('searchWithPagination', { q: { all: q }, offset, limit, filters });
   }
   work(wid) { return this.fbi('getMaterial', { wid }); }
@@ -113,9 +114,10 @@ export class GoClient {
     const fb = fbTokens.get(this.state.deviceId);
     if (fb && fb.exp > Date.now() + 60_000) return fb.idToken;
     const { token } = await this.ap('/biblio/v1/auth/create-sign-in-token', { method: 'POST', body: {} });
-    const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${await getFirebaseKey()}`, {
+    if (!this.site.firebaseKey) throw new HttpError(409, 'Biblioteket har ikke lydbøger og e-bøger i GO.');
+    const r = await upstream(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${this.site.firebaseKey}`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', origin: GO, referer: GO + '/' },
+      headers: { 'content-type': 'application/json', origin: this.base, referer: this.base + '/' },
       body: JSON.stringify({ token, returnSecureToken: true }),
     });
     const j = await r.json();
@@ -127,9 +129,9 @@ export class GoClient {
   async fn(name, { data, query } = {}) {
     const idToken = await this.firebaseToken();
     const url = `${FN}/${name}${query ? '?' + new URLSearchParams(query) : ''}`;
-    const r = await fetch(url, {
+    const r = await upstream(url, {
       method: data === undefined ? 'GET' : 'POST',
-      headers: { authorization: 'Bearer ' + idToken, origin: GO, referer: GO + '/', ...(data === undefined ? {} : { 'content-type': 'application/json' }) },
+      headers: { authorization: 'Bearer ' + idToken, origin: this.base, referer: this.base + '/', ...(data === undefined ? {} : { 'content-type': 'application/json' }) },
       body: data === undefined ? undefined : JSON.stringify({ data }),
     });
     const text = await r.text();
@@ -145,7 +147,7 @@ export class GoClient {
       try {
         await this.fn('Devices-add', { data: { device: { id: this.state.deviceId, name: 'Bibliotek (lyd)', type: 'web' } } });
       } catch (e) {
-        if (e.status === 429) throw new HttpError(409, 'Du har brugt alle 6 enheder til lydbøger og e-bøger. Fjern en enhed i GO-appen eller på go.bibliotek.kk.dk under din profil, og prøv igen.');
+        if (e.status === 429) throw new HttpError(409, 'Du har brugt alle 6 enheder til lydbøger og e-bøger. Fjern en enhed i GO under din profil, og prøv igen.');
         if (e.status !== 409) throw e; // 409 = already-exists: fine
       }
       devicesAdded.add(this.state.deviceId);
