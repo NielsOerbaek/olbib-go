@@ -202,7 +202,6 @@ async function viewLoans(alive) {
       ${coverImg(l.work.cover)}
       <div class="meta"><div class="t">${esc(l.work.title)}</div><div class="s">${esc((l.work.creators || []).join(', '))}</div>
       <div class="chips">${chip}</div></div>
-      ${l.isRenewable ? `<button class="btn small" data-renew="${l.loanId}">Forny</button>` : ''}
     </div>`;
   }).join('');
 
@@ -217,7 +216,6 @@ async function viewLoans(alive) {
       <button class="btn small" data-cancel="${r.id}">Slet</button>
     </div>`).join('');
 
-  const renewable = d.physical.filter((l) => l.isRenewable).map((l) => l.loanId);
   const otherCount = d.digital.length - audio.length + d.physical.length + d.reservations.length;
   const anyLate = d.physical.some((l) => daysUntil(l.dueDate) <= 3) || d.reservations.some((r) => r.state === 'readyForPickup');
   view.innerHTML = `
@@ -226,24 +224,15 @@ async function viewLoans(alive) {
       : '<div class="empty-box"><p>Du har ingen lydbøger lånt lige nu.</p><a class="btn audio" href="#/search">' + ICON.ears + 'Find en lydbog</a></div>'}
     ${otherCount ? `<details class="more" id="more"${localStorage.getItem('moreOpen') === '1' ? ' open' : ''}>
       <summary><span>Andre lån</span><span class="chip${anyLate ? ' sun' : ''}">${otherCount}</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
-      <p class="more-note">E-bøger og bøger kan ikke lånes her, men du kan se dine lån og forny bøger.</p>
+      <p class="more-note">E-bøger og bøger kan hverken lånes eller fornyes her. Det gør du i GO.</p>
       ${ebooks ? `<h3>E-bøger</h3><div class="rows">${ebooks}</div>` : ''}
-      ${physical ? `<h3>Bøger derhjemme</h3>${renewable.length > 1 ? `<p><button class="btn small" data-renew="${renewable.join(',')}">Forny alle ${renewable.length}</button></p>` : ''}<div class="rows">${physical}</div>` : ''}
+      ${physical ? `<h3>Bøger derhjemme</h3><div class="rows">${physical}</div>` : ''}
       ${resv ? `<h3>Reserveret</h3><div class="rows">${resv}</div>` : ''}
     </details>` : ''}
     ${d.fees ? `<h2>Gebyrer</h2><p class="err">Du skylder ${d.fees} kr.</p>` : ''}
 `;
   $('#more')?.addEventListener('toggle', (e) => localStorage.setItem('moreOpen', e.target.open ? '1' : '0'));
 
-  view.querySelectorAll('[data-renew]').forEach((b) => (b.onclick = async () => {
-    const done = busy(b);
-    try {
-      const r = await api('POST', '/renew', { loanIds: b.dataset.renew.split(',').map(Number) });
-      const ok = r.filter((x) => (x.renewalStatus || []).includes('renewed')).length;
-      toast(ok ? `Fornyet: ${ok}` : 'Kunne ikke fornyes');
-      viewLoans(alive);
-    } catch (e) { toast(e.message); done(); }
-  }));
   view.querySelectorAll('[data-cancel]').forEach((b) => (b.onclick = async () => {
     if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = 'Sikker?'; return; }
     const done = busy(b);

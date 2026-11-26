@@ -207,8 +207,7 @@ const routes = [
         duration: l.duration ?? null, cover: prox(products[i]?.thumbnailUri ?? products[i]?.coverUri),
       })),
       physical: phys.map((l) => ({
-        loanId: l.loanDetails.loanId, dueDate: l.loanDetails.dueDate, isRenewable: l.isRenewable,
-        renewalStatus: l.renewalStatusList, work: works[l.loanDetails.recordId] ?? { title: l.loanDetails.ilBibliographicRecord?.title ?? 'Ukendt titel' },
+        loanId: l.loanDetails.loanId, dueDate: l.loanDetails.dueDate, work: works[l.loanDetails.recordId] ?? { title: l.loanDetails.ilBibliographicRecord?.title ?? 'Ukendt titel' },
       })).sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
       reservations: resv.map((r) => ({
         id: r.reservationId, state: r.state, numberInQueue: r.numberInQueue ?? null,
@@ -217,11 +216,6 @@ const routes = [
       })),
       fees: fees.reduce((sum, f) => sum + (f.amount ?? 0), 0),
     });
-  }],
-  ['POST', /^\/api\/renew$/, async (req, res) => {
-    const go = await clientFor(req, res);
-    const { loanIds } = await readBody(req);
-    json(res, 200, await go.renew(loanIds.map(Number)));
   }],
   ['DELETE', /^\/api\/reservations\/(\d+)$/, async (req, res, m) => {
     await (await clientFor(req, res)).cancelReservation(m[1]);

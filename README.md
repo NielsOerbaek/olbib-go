@@ -27,9 +27,9 @@ Olbib Go er den vej ind, og den handler om lydbøger. Det er en simpel webapp, d
 - **Søge** efter lydbøger mens man skriver. Filteret "Alt" viser også andre formater.
 - **Låne** lydbøger.
 - **Lytte:** ±30 sekunder, afspilningshastighed, husker hvor man kom til, styring fra låseskærmen og en søvntimer.
-- **Andre lån** (e-bøger, hjemlånte bøger og reserveringer) står i en sammenfoldet liste nedenunder. Man kan se dem, forny hjemlånte bøger og slette reserveringer.
+- **Andre lån** (e-bøger, hjemlånte bøger og reserveringer) står i en sammenfoldet liste nedenunder. Man kan se dem og slette reserveringer.
 
-Appen kan **ikke** låne e-bøger eller reservere fysiske bøger. Det gør man i GO, og en titelside siger, hvis bogen også findes i andre formater. Serveren afviser også selv lån af andet end lydbøger. E-bøger kan heller ikke læses i appen, se [E-bøger](#e-bøger).
+Appen kan **ikke** låne e-bøger, reservere fysiske bøger eller forny lån. Det gør man i GO, og en titelside siger, hvis bogen også findes i andre formater. Serveren afviser også selv lån af andet end lydbøger. E-bøger kan heller ikke læses i appen, se [E-bøger](#e-bøger).
 
 Appen er brugt og testet med Københavns Biblioteker. De andre kommuners GO-sider er bygget på samme måde, og deres opsætning er testet, men ikke login med et rigtigt lånerkort.
 
@@ -123,7 +123,7 @@ Alt går gennem kommunens GO-side, fx `https://go.bibliotek.kk.dk/ap-service/…
 |---|---|
 | Søgning og værker | `POST /fbi`: DBC's FBI GraphQL (`searchWithPagination`, `getMaterial`, `getManifestationsByFaust`). Forespørgslerne ligger i `server/queries/`. |
 | Filtrering på type | FBI-filteret `materialTypesSpecific`: `lydbog (online)`, `e-bog`, `bog` |
-| Hjemlån, fornyelse, gebyrer | `GET /fbs/external/agencyid/patrons/patronid/loans/v2`, `POST …/loans/renew/v2`, `GET …/patron/patronid/fees/v2` |
+| Hjemlån og gebyrer | `GET /fbs/external/agencyid/patrons/patronid/loans/v2`, `GET …/patron/patronid/fees/v2` |
 | Reserveringer | `GET /fbs/external/v1/agencyid/patrons/patronid/reservations/v2`, `DELETE …/reservations?reservationid=` |
 | Digitale lån | `GET/POST /biblio/v1/loans` (lån med `{ "material_id": "<ISBN>" }`, kun lydbøger) |
 | Metadata og forsider for digitale titler | `GET /pubhub-adapter/v1/products/<ISBN>` (`productType` 2 er lydbog) |
