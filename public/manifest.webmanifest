@@ -1,6 +1,7 @@
 {
   "name": "Olbib Go",
   "short_name": "Olbib Go",
+  "description": "Lån og lyt til lydbøger fra Biblo GO! på ældre telefoner",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f3ead8",

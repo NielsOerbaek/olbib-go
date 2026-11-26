@@ -93,16 +93,8 @@ export class GoClient {
   fbsReservations() { return this.ap('/fbs/external/v1/agencyid/patrons/patronid/reservations/v2'); }
   fbsFees() { return this.ap('/fbs/external/agencyid/patron/patronid/fees/v2?includepaid=false&includenonpayable=true'); }
   renew(loanIds) { return this.ap('/fbs/external/agencyid/patrons/patronid/loans/renew/v2', { method: 'POST', body: loanIds }); }
-  reserve(faustIds) {
-    return this.ap('/fbs/external/v1/agencyid/patrons/patronid/reservations/v2', {
-      method: 'POST', body: { reservations: faustIds.map((recordId) => ({ recordId })), ...(faustIds.length > 1 ? { type: 'parallel' } : {}) },
-    });
-  }
   cancelReservation(id) {
     return this.ap(`/fbs/external/v1/agencyid/patrons/patronid/reservations?reservationid=${encodeURIComponent(id)}`, { method: 'DELETE' });
-  }
-  availability(faustIds) {
-    return this.ap('/fbs/external/agencyid/catalog/availability/v3?' + faustIds.map((f) => 'recordid=' + encodeURIComponent(f)).join('&'));
   }
 
   // ---------- digital (biblio / WeDoBooks) ----------

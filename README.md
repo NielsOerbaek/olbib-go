@@ -1,13 +1,14 @@
 # Olbib Go
 
-En lille, uofficiel webapp til folkebibliotekernes børneunivers [Biblo GO!](https://biblogo.dk) (tidligere eReolen GO), lavet til ældre telefoner. Man vælger sin kommune ved login, og appen taler så med den kommunes GO-side.
+En lille, uofficiel webapp til at låne og lytte til **lydbøger** fra folkebibliotekernes børneunivers [Biblo GO!](https://biblogo.dk) (tidligere eReolen GO), lavet til ældre telefoner. Man vælger sin kommune ved login, og appen taler så med den kommunes GO-side.
 
 > Olbib Go er et privat hobbyprojekt. Det er ikke lavet af, godkendt af eller tilknyttet Biblo GO!, Det Digitale Folkebibliotek, Københavns Biblioteker eller andre biblioteker, DBC eller WeDoBooks.
 
 <p>
-  <img src="docs/screenshots/2-mine-laan.png" width="190" alt="Mine lån med lydbøger, e-bøger og hjemlånte bøger">
+  <img src="docs/screenshots/2-mine-laan.png" width="190" alt="Mine lån med lydbøgerne i to kolonner">
+  <img src="docs/screenshots/2b-andre-laan.png" width="190" alt="Andre lån foldet ud: e-bøger, hjemlånte bøger og reserveringer">
   <img src="docs/screenshots/3-soeg.png" width="190" alt="Søgning med filter for lydbøger">
-  <img src="docs/screenshots/4-titel.png" width="190" alt="En titel med knapper til at låne lydbogen og reservere bogen">
+  <img src="docs/screenshots/4-titel.png" width="190" alt="En titel med knap til at låne lydbogen">
   <img src="docs/screenshots/5-afspiller.png" width="190" alt="Lydbogsafspilleren med søvntimer">
 </p>
 
@@ -17,17 +18,18 @@ En lille, uofficiel webapp til folkebibliotekernes børneunivers [Biblo GO!](htt
 
 Biblo GO! er en del af Det Digitale Folkebibliotek, og omkring 100 biblioteker i Danmark, på Færøerne, i Grønland og i Sydslesvig har hver deres GO-side. GO virker ikke på vores gamle iPhone, som kører iOS 16 og ikke kan opdateres. Telefonen er ellers fin til at lytte til lydbøger, og et barn kan sagtens bruge den. Det eneste, der mangler, er en vej ind til bibliotekets bøger.
 
-Olbib Go er den vej ind. Det er en simpel webapp, der kan lægges på hjemmeskærmen i Safari (en såkaldt PWA). Den taler med de samme tjenester som GO, med ens eget lånerkort og pinkode, og viser det hele i en brugerflade, der virker i en gammel Safari.
+Olbib Go er den vej ind, og den handler om lydbøger. Det er en simpel webapp, der kan lægges på hjemmeskærmen i Safari (en såkaldt PWA). Den taler med de samme tjenester som GO, med ens eget lånerkort og pinkode, og viser det hele i en brugerflade, der virker i en gammel Safari.
 
 ## Hvad kan den
 
 - **Logge ind** i sin egen kommune med lånernummer eller CPR og pinkode. Man forbliver logget ind på telefonen.
-- **Mine lån:** lydbøger og e-bøger, hjemlånte bøger med afleveringsdato, fornyelse (en ad gangen eller alle) og reserveringer med kønummer og afhentning.
-- **Søg** mens man skriver, med filtre for lydbøger, e-bøger og fysiske bøger.
-- **Låne** lydbøger og e-bøger og **reservere** fysiske bøger.
-- **Lytte** til lydbøger: ±30 sekunder, afspilningshastighed, husker hvor man kom til, styring fra låseskærmen og en søvntimer.
+- **Dine lydbøger** står øverst i to kolonner, med hvor langt man er nået.
+- **Søge** efter lydbøger mens man skriver. Filteret "Alt" viser også andre formater.
+- **Låne** lydbøger.
+- **Lytte:** ±30 sekunder, afspilningshastighed, husker hvor man kom til, styring fra låseskærmen og en søvntimer.
+- **Andre lån** (e-bøger, hjemlånte bøger og reserveringer) står i en sammenfoldet liste nedenunder. Man kan se dem, forny hjemlånte bøger og slette reserveringer.
 
-E-bøger kan lånes, men ikke læses i appen. Se [E-bøger](#e-bøger) nedenfor.
+Appen kan **ikke** låne e-bøger eller reservere fysiske bøger. Det gør man i GO, og en titelside siger, hvis bogen også findes i andre formater. Serveren afviser også selv lån af andet end lydbøger. E-bøger kan heller ikke læses i appen, se [E-bøger](#e-bøger).
 
 Appen er brugt og testet med Københavns Biblioteker. De andre kommuners GO-sider er bygget på samme måde, og deres opsætning er testet, men ikke login med et rigtigt lånerkort.
 
@@ -44,7 +46,7 @@ Kort sagt: **serveren gemmer ingenting om brugerne.** Alt om et login ligger kry
 | Hvor | Hvad | Hvor længe |
 |---|---|---|
 | **Brugerens cookie** (`lyd`) | Ét krypteret felt med valgt kommune, GO's session-cookies, lånernummer og pinkode (så serveren kan logge ind igen, når GO's session udløber efter cirka et døgn), navnet fra GO og enheds-id'et til lydbøger. | Indtil man logger ud, højst 180 dage |
-| **Telefonens browser** (localStorage) | Hvor langt man er nået i hver lydbog, den seneste lydbog, afspilningshastighed, valgt søgefilter og senest valgte kommune. | Indtil browserdata slettes |
+| **Telefonens browser** (localStorage) | Hvor langt man er nået i hver lydbog, den seneste lydbog, afspilningshastighed, valgt søgefilter, senest valgte kommune og om "Andre lån" er foldet ud. | Indtil browserdata slettes |
 | **Serverens disk** | Kun en tilfældig hemmelighed (`secret`), som bruges til at kryptere cookies og beregne enheds-id'er. Ingen brugerliste, ingen sessioner. | Fast |
 | **Serverens hukommelse** | Kortlivede billetter til lydbogsafspilning (30 min), midlertidige Firebase-tokens (1 time), hvilke enheder der er registreret, tællere til hastighedsbegrænsning, tidspunkter for fejlede logins pr. IP, anonyme trafiktællere og kommunernes opsætning. | Forsvinder ved genstart |
 | **Serverens log** | Intet. Logning er slået fra som standard. | – |
@@ -122,10 +124,9 @@ Alt går gennem kommunens GO-side, fx `https://go.bibliotek.kk.dk/ap-service/…
 | Søgning og værker | `POST /fbi`: DBC's FBI GraphQL (`searchWithPagination`, `getMaterial`, `getManifestationsByFaust`). Forespørgslerne ligger i `server/queries/`. |
 | Filtrering på type | FBI-filteret `materialTypesSpecific`: `lydbog (online)`, `e-bog`, `bog` |
 | Hjemlån, fornyelse, gebyrer | `GET /fbs/external/agencyid/patrons/patronid/loans/v2`, `POST …/loans/renew/v2`, `GET …/patron/patronid/fees/v2` |
-| Reserveringer | `GET/POST /fbs/external/v1/agencyid/patrons/patronid/reservations/v2`, `DELETE …/reservations?reservationid=` |
-| Tilgængelighed | `GET /fbs/external/agencyid/catalog/availability/v3?recordid=…` |
-| Digitale lån | `GET/POST /biblio/v1/loans` (lån med `{ "material_id": "<ISBN>" }`), `GET /biblio/v1/users/get_loan_quotas` |
-| Metadata og forsider for digitale titler | `GET /pubhub-adapter/v1/products/<ISBN>` |
+| Reserveringer | `GET /fbs/external/v1/agencyid/patrons/patronid/reservations/v2`, `DELETE …/reservations?reservationid=` |
+| Digitale lån | `GET/POST /biblio/v1/loans` (lån med `{ "material_id": "<ISBN>" }`, kun lydbøger) |
+| Metadata og forsider for digitale titler | `GET /pubhub-adapter/v1/products/<ISBN>` (`productType` 2 er lydbog) |
 
 FBS-endpointsene er dokumenteret i den åbne OpenAPI-beskrivelse i [dpl-react](https://github.com/danskernesdigitalebibliotek/dpl-react) (`src/core/fbs/fbs-adapter.yaml`). Resten er fundet ved at se på den trafik, GO selv sender, når man bruger GO med sin egen konto.
 

@@ -23,28 +23,31 @@ await page.click('button[type=submit]'); await page.waitForSelector('.row, .book
 
 // build sample loans from public search results
 const search = (q, type) => page.evaluate(([q, type]) => fetch(`/api/search?q=${encodeURIComponent(q)}&type=${type}`).then((r) => r.json()), [q, type]);
-const audio = (await search('rasmus klump', 'audiobook')).works.filter((w) => w.cover).slice(0, 2);
+const audio = [...(await search('rasmus klump', 'audiobook')).works.filter((w) => w.cover).slice(0, 2), ...(await search('alfons åberg', 'audiobook')).works.filter((w) => w.cover).slice(0, 2)];
 const ebook = (await search('alfons åberg', 'ebook')).works.filter((w) => w.cover).slice(0, 1);
 const books = (await search('pippi langstrømpe', 'book')).works.filter((w) => w.cover).slice(0, 3);
 const day = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
 const sample = {
   digital: [
-    ...audio.map((w, i) => ({ id: 'demo-a' + i, isbn: '0', kind: 'audiobook', title: w.title, author: w.creators.join(', '), end: day(18 + i * 5) + 'T22:59:59Z', duration: 7200, cover: w.cover })),
+    ...audio.map((w, i) => ({ id: 'demo-a' + i, isbn: '0', kind: 'audiobook', title: w.title, author: w.creators.join(', '), end: day(12 + i * 4) + 'T22:59:59Z', duration: 7200, cover: w.cover })),
     ...ebook.map((w) => ({ id: 'demo-e0', isbn: '0', kind: 'ebook', title: w.title, author: w.creators.join(', '), end: day(26) + 'T22:59:59Z', duration: null, cover: w.cover })),
   ],
   physical: books.map((w, i) => ({ loanId: i + 1, dueDate: day([2, 9, 16][i]), isRenewable: i > 0, renewalStatus: [], work: w })),
   reservations: [],
   fees: 0,
 };
-await page.evaluate(() => localStorage.setItem('pos:demo-a0', '2650'));
+await page.evaluate(() => { localStorage.setItem('pos:demo-a0', '2650'); localStorage.setItem('pos:demo-a2', '6100'); localStorage.setItem('moreOpen', '0'); });
 await page.route('**/api/loans', (r) => r.fulfill({ json: sample }));
 await page.route('**/api/me', (r) => r.fulfill({ json: { name: 'Eksempel' } }));
 
 // 2. my loans
 await page.goto(BASE + '/#/'); await page.reload(); await page.waitForSelector('.book'); await settle(2000); await shot('2-mine-laan');
+await page.click('details.more summary'); await settle(1500);
+await page.evaluate(() => document.querySelector('details.more').scrollIntoView({ block: 'start' })); await page.evaluate(() => window.scrollBy(0, -70)); await settle(600); await shot('2b-andre-laan');
+await page.evaluate(() => localStorage.setItem('moreOpen', '0'));
 
 // 3. live search with the audiobook filter
-await page.click('#dock a[data-tab=search]'); await page.click('.filter[data-type=audiobook]');
+await page.click('#dock a[data-tab=search]');
 await page.type('#q', 'rasmus klump', { delay: 50 }); await page.waitForSelector('#hits .row', { timeout: 20000 }); await settle(2000); await shot('3-soeg');
 await page.click('.filter[data-type=""]');
 

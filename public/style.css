@@ -99,6 +99,28 @@ h2 small { font: 500 16px var(--round); color: var(--ink-soft); margin-left: 6px
 .k { font-weight: 700; }
 .k.audio { color: #c63d20; }
 .k.ebook { color: var(--pine); }
+/* two-column grid of the user's audiobooks */
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 18px; padding: 4px 4px 0 0; }
+.grid .book { width: auto; }
+.grid .book .cover, .grid .book .cover.sq { width: 100%; height: auto; aspect-ratio: 1 / 1; }
+.empty-box { background: var(--paper); border-radius: 18px; padding: 22px 18px; text-align: center; }
+.empty-box p { margin: 0 0 16px; color: var(--ink-soft); }
+
+/* collapsed "Andre lån" */
+details.more { margin-top: 34px; background: rgba(255, 255, 255, 0.55); border-radius: 18px; padding: 4px 12px; }
+details.more summary {
+  list-style: none; display: flex; align-items: center; gap: 10px; cursor: pointer;
+  min-height: 52px; font: 600 19px var(--round);
+}
+details.more summary::-webkit-details-marker { display: none; }
+details.more summary span:first-child { flex: 1; }
+details.more .chev { width: 22px; height: 22px; transition: transform 0.15s; }
+details.more[open] .chev { transform: rotate(180deg); }
+details.more h3 { font: 600 17px var(--round); margin: 18px 2px 10px; }
+details.more .rows { margin-bottom: 8px; }
+.more-note { color: var(--ink-soft); font-size: 15px; margin: 0 2px 4px; }
+@media (prefers-reduced-motion: reduce) { details.more .chev { transition: none; } }
+
 .bar { height: 8px; margin-top: 10px; border: 2px solid var(--ink); border-radius: 99px; background: var(--paper); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--tomato); }
 

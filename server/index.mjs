@@ -182,17 +182,13 @@ const routes = [
     const { work } = await go.work(decodeURIComponent(m[1]));
     if (!work) throw new HttpError(404, 'Ukendt titel');
     const d = workDetail(work);
-    const faust = d.physical.map((p) => p.faust);
+    // Olbib Go only lends audiobooks; other formats are listed so the app can say they exist.
     if (!go.site.digital) d.digital = [];
-    const [avail, digital] = await Promise.all([
-      faust.length ? go.availability(faust).catch(() => []) : [],
-      d.digital.length ? go.digitalLoans().catch(() => ({ loans: [] })) : { loans: [] },
-    ]);
-    d.physicalAvailable = avail.some((a) => a.available);
-    d.physicalReservable = avail.some((a) => a.reservable);
-    d.reservationsInQueue = avail.reduce((n, a) => Math.max(n, a.reservations ?? 0), 0);
-    d.reserveFaust = avail.find((a) => a.reservable && a.available)?.recordId ?? avail.find((a) => a.reservable)?.recordId ?? null;
-    for (const x of d.digital) x.loan = digital.loans.find((l) => l.active && l.material_id === x.isbn)?.id ?? null;
+    const audio = d.digital.find((x) => x.kind === 'audiobook');
+    if (audio) {
+      const digital = await go.digitalLoans().catch(() => ({ loans: [] }));
+      audio.loan = digital.loans.find((l) => l.active && l.material_id === audio.isbn)?.id ?? null;
+    }
     json(res, 200, d);
   }],
   ['GET', /^\/api\/loans$/, async (req, res) => {
@@ -227,12 +223,6 @@ const routes = [
     const { loanIds } = await readBody(req);
     json(res, 200, await go.renew(loanIds.map(Number)));
   }],
-  ['POST', /^\/api\/reserve$/, async (req, res) => {
-    const go = await clientFor(req, res);
-    const { faust } = await readBody(req);
-    const r = await go.reserve(faust.map(String));
-    json(res, r.success ? 200 : 409, { success: r.success, results: (r.reservationResults ?? []).map((x) => x.result) });
-  }],
   ['DELETE', /^\/api\/reservations\/(\d+)$/, async (req, res, m) => {
     await (await clientFor(req, res)).cancelReservation(m[1]);
     json(res, 200, {});
@@ -240,6 +230,9 @@ const routes = [
   ['POST', /^\/api\/borrow$/, async (req, res) => {
     const go = await clientFor(req, res);
     const { isbn } = await readBody(req);
+    // only audiobooks (pubhub productType 2); e-books can't be read here, so don't lend them
+    const product = (await go.product(String(isbn)).catch(() => null))?.product;
+    if (product?.productType !== 2) throw new HttpError(403, 'Her kan du kun låne lydbøger.');
     const r = await go.borrow(String(isbn));
     json(res, 200, { status: r.status, id: r.loan?.id ?? null });
   }],

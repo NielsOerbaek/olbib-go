@@ -128,7 +128,7 @@ async function viewLogin(alive) {
   chrome({});
   const saved = localStorage.getItem('site') || '';
   view.innerHTML = `
-    <div class="hello"><img src="/icon-180.png" alt=""><h2>Hej!</h2><p>Log ind med dit lånerkort fra dit bibliotek.</p></div>
+    <div class="hello"><img src="/icon-180.png" alt=""><h2>Lydbøger fra biblioteket</h2><p>Lån og lyt til lydbøger fra Biblo GO! på en ældre telefon. Log ind med lånerkortet fra dit bibliotek.</p></div>
     <form class="card" autocomplete="on">
       <label for="site">Kommune</label>
       <div class="select-wrap"><select id="site" required disabled><option value="">Henter kommuner…</option></select><span class="spin" id="site-spin"></span></div>
@@ -169,21 +169,29 @@ async function viewLogin(alive) {
 
 async function viewLoans(alive) {
   chrome({ tab: 'loans' });
-  view.innerHTML = spinner('Henter dine lån');
+  view.innerHTML = spinner('Henter dine lydbøger');
   const d = await api('GET', '/loans');
   if (!alive()) return;
 
-  const shelf = d.digital.map((l) => {
-    const href = l.kind === 'audiobook' ? `#/listen/${l.id}` : `#/read/${l.id}`;
+  // Audiobooks are the point of the app: a two-column grid up top.
+  const audio = d.digital.filter((l) => l.kind === 'audiobook');
+  const grid = audio.map((l) => {
     const pos = Number(localStorage.getItem('pos:' + l.id) || 0);
-    const pct = l.kind === 'audiobook' && pos && l.duration ? Math.min(100, Math.round((pos / l.duration) * 100)) : null;
-    return `<a class="book" href="${href}">
-      <div class="cv">${coverImg(l.cover, 'cover', l.kind === 'audiobook')}${kindBadge(l.kind)}</div>
+    const pct = pos && l.duration ? Math.min(100, Math.round((pos / l.duration) * 100)) : null;
+    return `<a class="book" href="#/listen/${l.id}">
+      ${coverImg(l.cover, 'cover', true)}
       ${pct !== null ? `<div class="bar" aria-label="${pct} procent hørt"><i style="width:${pct}%"></i></div>` : ''}
       <div class="t">${esc(l.title)}</div>
-      <div class="s"><b class="k ${kindOf(l.kind) ?? ''}">${KIND[l.kind] ?? esc(l.kind)}</b> til ${fmtDate(l.end)}</div>
+      <div class="s">Til ${fmtDate(l.end)}</div>
     </a>`;
   }).join('');
+
+  // Everything else lives in a collapsed list underneath: shown, but not the focus.
+  const ebooks = d.digital.filter((l) => l.kind !== 'audiobook').map((l) => `<a class="row" href="#/read/${l.id}">
+      ${coverImg(l.cover)}
+      <div class="meta"><div class="t">${esc(l.title)}</div><div class="s">${esc(l.author || '')}</div>
+      <div class="chips">${kindChip('e-bog')}<span class="chip">Til ${fmtDate(l.end)}</span></div></div>
+    </a>`).join('');
 
   const physical = d.physical.map((l) => {
     const days = daysUntil(l.dueDate);
@@ -191,7 +199,7 @@ async function viewLoans(alive) {
       : days <= 3 ? `<span class="chip sun">Afleveres ${days === 0 ? 'i dag' : fmtDate(l.dueDate)}</span>`
       : `<span class="chip">Afleveres ${fmtDate(l.dueDate)}</span>`;
     return `<div class="row">
-      ${l.work.id ? `<a href="#/work/${encodeURIComponent(l.work.id)}">${coverImg(l.work.cover)}</a>` : coverImg(l.work.cover)}
+      ${coverImg(l.work.cover)}
       <div class="meta"><div class="t">${esc(l.work.title)}</div><div class="s">${esc((l.work.creators || []).join(', '))}</div>
       <div class="chips">${chip}</div></div>
       ${l.isRenewable ? `<button class="btn small" data-renew="${l.loanId}">Forny</button>` : ''}
@@ -210,15 +218,22 @@ async function viewLoans(alive) {
     </div>`).join('');
 
   const renewable = d.physical.filter((l) => l.isRenewable).map((l) => l.loanId);
+  const otherCount = d.digital.length - audio.length + d.physical.length + d.reservations.length;
+  const anyLate = d.physical.some((l) => daysUntil(l.dueDate) <= 3) || d.reservations.some((r) => r.state === 'readyForPickup');
   view.innerHTML = `
-    <h2>Lyt og læs</h2>
-    ${shelf ? `<div class="shelf">${shelf}</div>` : '<p class="empty">Ingen lydbøger eller e-bøger lige nu.</p><p><a class="btn go" href="#/search">Find en bog</a></p>'}
-    <h2>Bøger derhjemme <small>${d.physical.length}</small></h2>
-    ${renewable.length > 1 ? `<p><button class="btn small" data-renew="${renewable.join(',')}">Forny alle ${renewable.length}</button></p>` : ''}
-    <div class="rows">${physical || '<p class="empty">Ingen bøger lånt med hjem.</p>'}</div>
-    ${d.reservations.length ? `<h2>Reserveret</h2><div class="rows">${resv}</div>` : ''}
+    <h2>Dine lydbøger</h2>
+    ${grid ? `<div class="grid">${grid}</div>`
+      : '<div class="empty-box"><p>Du har ingen lydbøger lånt lige nu.</p><a class="btn audio" href="#/search">' + ICON.ears + 'Find en lydbog</a></div>'}
+    ${otherCount ? `<details class="more" id="more"${localStorage.getItem('moreOpen') === '1' ? ' open' : ''}>
+      <summary><span>Andre lån</span><span class="chip${anyLate ? ' sun' : ''}">${otherCount}</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+      <p class="more-note">E-bøger og bøger kan ikke lånes her, men du kan se dine lån og forny bøger.</p>
+      ${ebooks ? `<h3>E-bøger</h3><div class="rows">${ebooks}</div>` : ''}
+      ${physical ? `<h3>Bøger derhjemme</h3>${renewable.length > 1 ? `<p><button class="btn small" data-renew="${renewable.join(',')}">Forny alle ${renewable.length}</button></p>` : ''}<div class="rows">${physical}</div>` : ''}
+      ${resv ? `<h3>Reserveret</h3><div class="rows">${resv}</div>` : ''}
+    </details>` : ''}
     ${d.fees ? `<h2>Gebyrer</h2><p class="err">Du skylder ${d.fees} kr.</p>` : ''}
 `;
+  $('#more')?.addEventListener('toggle', (e) => localStorage.setItem('moreOpen', e.target.open ? '1' : '0'));
 
   view.querySelectorAll('[data-renew]').forEach((b) => (b.onclick = async () => {
     const done = busy(b);
@@ -242,23 +257,23 @@ const sortTypes = (types) => {
   const seen = new Set();
   return [...types].sort((a, b) => rank(a) - rank(b)).filter((t) => { const k = kindOf(t) ?? t; if (seen.has(k)) return false; seen.add(k); return true; });
 };
-const FILTERS = [['', 'Alt'], ['audiobook', 'Lydbøger'], ['ebook', 'E-bøger'], ['book', 'Bøger']];
+const FILTERS = [['audiobook', 'Lydbøger'], ['', 'Alt']];
 // Search as you type: debounced, and only the newest query may paint results.
 async function viewSearch(q, alive) {
   chrome({ tab: 'search' });
   view.innerHTML = `
-    <form class="searchbar"><input type="search" id="q" placeholder="Titel, forfatter, emne" value="${esc(q)}" enterkeyhint="search" autocomplete="off" autocorrect="off" spellcheck="false"><span class="spin" id="qspin" hidden></span></form>
+    <form class="searchbar"><input type="search" id="q" placeholder="Søg efter en lydbog" value="${esc(q)}" enterkeyhint="search" autocomplete="off" autocorrect="off" spellcheck="false"><span class="spin" id="qspin" hidden></span></form>
     <div class="filters" role="radiogroup" aria-label="Vis kun">${FILTERS.map(([k, label]) =>
       `<button type="button" role="radio" class="filter" data-type="${k}">${label}</button>`).join('')}</div>
     <div id="results"></div>`;
   const input = $('#q'); const results = $('#results'); const qspin = $('#qspin');
-  let type = localStorage.getItem('searchType') || '';
+  let type = localStorage.getItem('searchFilter') ?? 'audiobook';
   const markFilters = () => view.querySelectorAll('.filter').forEach((b) => {
     b.classList.toggle('on', b.dataset.type === type); b.setAttribute('aria-checked', String(b.dataset.type === type));
   });
   markFilters();
   view.querySelectorAll('.filter').forEach((b) => (b.onclick = () => {
-    type = b.dataset.type; localStorage.setItem('searchType', type); markFilters();
+    type = b.dataset.type; localStorage.setItem('searchFilter', type); markFilters();
     const text = current; current = null; run(text ?? input.value);
   }));
   let seq = 0; let timer = null; let offset = 0; let current = '';
@@ -316,48 +331,38 @@ async function viewWork(id, alive) {
   const w = await api('GET', '/work/' + encodeURIComponent(id));
   if (!alive()) return;
   $('#title').textContent = w.title;
-  const digital = w.digital.map((d) => {
-    const route = d.kind === 'audiobook' ? 'listen' : 'read';
-    const audio = d.kind === 'audiobook';
-    const cls = `btn block ${audio ? 'audio' : 'ebook'}`; const icon = ICON[audio ? 'ears' : 'open'];
-    if (d.loan) return `<a class="${cls}" href="#/${route}/${d.loan}">${icon}${audio ? 'Lyt til lydbogen' : 'Læs e-bogen'}</a>`;
-    return `<button class="${cls}" data-borrow="${esc(d.isbn)}" data-route="${route}">${icon}${audio ? 'Lån lydbogen' : 'Lån e-bogen'}</button>`;
-  }).join('');
-  let physical = '';
-  if (w.physical.length) {
-    const status = w.physicalAvailable ? 'Bogen står på hylden på et af bibliotekerne.' : `Alle bøgerne er lånt ud${w.reservationsInQueue ? `, ${w.reservationsInQueue} venter` : ''}.`;
-    physical = w.reserveFaust
-      ? `<button class="btn block" id="reserve">Reservér bogen</button><p class="status">${status}</p>`
-      : `<p class="status">${status} Den kan ikke reserveres.</p>`;
-  }
+  const audio = w.digital.find((d) => d.kind === 'audiobook');
+  const action = audio
+    ? (audio.loan
+      ? `<a class="btn block audio" href="#/listen/${audio.loan}">${ICON.ears}Lyt til lydbogen</a>`
+      : `<button class="btn block audio" data-borrow="${esc(audio.isbn)}">${ICON.ears}Lån lydbogen</button>`)
+    : `<p class="status">Den findes ikke som lydbog${meInfo.digital === false ? ' hos dit bibliotek' : ''}.</p>`;
+  const also = [w.digital.some((d) => d.kind === 'ebook') && 'e-bog', w.physical.length && 'bog'].filter(Boolean);
+  const alsoNote = also.length
+    ? `<p class="status">Findes også som ${also.join(' og ')}. ${meInfo.goUrl ? `Den kan du låne i <a href="${esc(meInfo.goUrl)}/work/${encodeURIComponent(w.id)}" target="_blank" rel="noopener">GO</a>.` : 'Den kan du låne i GO.'}</p>`
+    : '';
   view.innerHTML = `
     <div class="work-head">${coverImg(w.cover, 'cover big', w.digital.length === 1 && w.digital[0].kind === 'audiobook' && !w.physical.length)}
       <h2>${esc(w.title)}</h2>
       <div class="by">${esc(w.creators.join(', '))}${w.year ? ', ' + esc(w.year) : ''}</div>
       <div class="chips">${sortTypes(w.types).map(kindChip).join('')}${w.series ? `<span class="chip">${esc(w.series.title)} ${esc(w.series.numberInSeries || '')}</span>` : ''}${w.ages ? `<span class="chip sun">${esc(w.ages)} år</span>` : ''}</div>
     </div>
-    <div class="actions">${digital}${physical}</div>
+    <div class="actions">${action}${alsoNote}</div>
     ${w.abstract ? `<div class="abstract">${esc(w.abstract)}</div>` : ''}`;
   view.querySelectorAll('[data-borrow]').forEach((b) => (b.onclick = async () => {
     const done = busy(b, 'Låner');
     try {
       const r = await api('POST', '/borrow', { isbn: b.dataset.borrow });
-      if (r.id) { toast('Lånt!'); go(`#/${b.dataset.route}/${r.id}`); }
+      if (r.id) { toast('Lånt!'); go(`#/listen/${r.id}`); }
       else { toast(`Kunne ikke låne (${r.status})`); done(); }
     } catch (e) { toast(e.message); done(); }
   }));
-  const res = $('#reserve');
-  if (res) res.onclick = async () => {
-    const done = busy(res, 'Reserverer');
-    try { await api('POST', '/reserve', { faust: [w.reserveFaust] }); done('Reserveret'); res.disabled = true; toast('Bogen er reserveret'); }
-    catch (e) { toast(e.status === 409 ? 'Kunne ikke reservere. Måske har du den allerede.' : e.message); done(); }
-  };
 }
 
 function viewRead() {
   chrome({ back: true, title: 'E-bog' });
-  view.innerHTML = `<div class="hello"><h2>E-bøger kommer ikke her</h2>
-    <p>E-bøger er kopibeskyttede og kan kun læses i bibliotekets egen læser.</p></div>
+  view.innerHTML = `<div class="hello"><h2>Læs e-bogen i GO</h2>
+    <p>Olbib Go er til lydbøger. E-bøger er kopibeskyttede og kan kun læses i bibliotekets egen læser.</p></div>
     ${meInfo.goUrl ? `<p style="margin-top:22px"><a class="btn go block" href="${esc(meInfo.goUrl)}/user/profile" target="_blank" rel="noopener">Åbn i GO</a></p>` : ''}`;
 }
 
